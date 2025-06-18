@@ -14,7 +14,7 @@ A RESTful API template built with Express.js, Knex.js, and PostgreSQL.
 
 ## Requirements
 
-- Node.js (v14+)
+- Node.js (v20+)
 - PostgreSQL
 
 ## Setup
@@ -29,18 +29,15 @@ npm install
 3. Create a `.env` file in the root directory with the following variables:
 
 ```
+# application
 NODE_ENV=development
 PORT=3000
 
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=express_template
+# database
+DATABASE_URL=postgresql://pg_user:pg_password@pg_host/pg_database
 
 # JWT
-JWT_SECRET=your_jwt_secret_key
+JWT_SECRET=jwt_secret_key
 JWT_EXPIRES_IN=1d
 ```
 
@@ -69,21 +66,3 @@ npm run dev
 ```bash
 npm start
 ```
-
-## API Endpoints
-
-### Authentication
-
-- `POST /api/auth/register` - Register a new user
-- `POST /api/auth/login` - Login a user
-
-### Users
-
-- `GET /api/users` - Get all users (requires authentication)
-- `GET /api/users/:id` - Get a user by ID (requires authentication)
-- `PUT /api/users/:id` - Update a user (requires authentication)
-- `DELETE /api/users/:id` - Delete a user (requires authentication)
-
-## License
-
-ISC
