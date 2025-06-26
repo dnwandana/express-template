@@ -62,7 +62,10 @@ export const requireRefreshToken = (req, res, next) => {
     }
 
     // verify token
-    verifyRefreshToken(refreshToken);
+    const decoded = verifyRefreshToken(refreshToken);
+
+    // set user in request
+    req.user = decoded;
 
     next();
   } catch (error) {

@@ -9,11 +9,6 @@ const router = Router();
 
 router.post("/signup", authController.signup);
 router.post("/signin", authController.signin);
-router.post(
-  "/refresh",
-  requireAccessToken,
-  requireRefreshToken,
-  authController.refreshAccessToken
-);
+router.post("/refresh", requireRefreshToken, authController.refreshAccessToken);
 
 export default router;
