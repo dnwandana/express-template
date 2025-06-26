@@ -47,7 +47,10 @@ export const getTodos = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: todos,
+        data: {
+          todos: todos,
+          total: todos.length,
+        },
       })
     );
   } catch (error) {
@@ -68,7 +71,9 @@ export const getTodo = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: todo,
+        data: {
+          todo: todo,
+        },
       })
     );
   } catch (error) {
@@ -113,12 +118,7 @@ export const createTodo = async (req, res, next) => {
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
         data: {
-          id: todo.id,
-          title: todo.title,
-          description: todo.description,
-          is_completed: todo.is_completed,
-          created_at: todo.created_at,
-          updated_at: todo.updated_at,
+          todo: todo,
         },
       })
     );
@@ -166,12 +166,7 @@ export const updateTodo = async (req, res, next) => {
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
         data: {
-          id: todo.id,
-          title: todo.title,
-          description: todo.description,
-          is_completed: todo.is_completed,
-          created_at: todo.created_at,
-          updated_at: todo.updated_at,
+          todo: todo,
         },
       })
     );
@@ -205,7 +200,7 @@ export const deleteTodos = async (req, res, next) => {
   try {
     // query schema validation
     const querySchema = joi.object({
-      ids: joi.array().items(joi.string().required()).required(),
+      ids: joi.string().required(),
     });
 
     // request values
@@ -220,12 +215,12 @@ export const deleteTodos = async (req, res, next) => {
     // request values
     const userId = req.user.id;
     const { ids } = value;
+    const todoIds = ids.split(",").map((id) => id.trim());
 
     // delete todos
-    const deletePromises = ids.map(
+    const deletePromises = todoIds.map(
       async (todoId) => await todoModel.remove({ id: todoId, user_id: userId })
     );
-
     await Promise.all(deletePromises);
 
     return res.json(
