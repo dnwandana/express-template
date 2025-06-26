@@ -4,7 +4,7 @@ import apiResponse from "../utils/response.js";
 import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
 import * as userModel from "../models/users.js";
 import { hashPassword, verifyPassword } from "../utils/argon2.js";
-import { generateJWT } from "../utils/jwt.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
 
 export const signup = async (req, res, next) => {
   try {
@@ -93,8 +93,9 @@ export const signin = async (req, res, next) => {
       throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "invalid credentials");
     }
 
-    // generate jwt
-    const token = generateJWT(user.id);
+    // generate tokens
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
 
     return res.json(
       apiResponse({
@@ -102,12 +103,35 @@ export const signin = async (req, res, next) => {
         data: {
           id: user.id,
           username: user.username,
-          token,
+          access_token: accessToken,
+          refresh_token: refreshToken,
         },
       })
     );
   } catch (error) {
     console.error("error in signin", error);
+    return next(error);
+  }
+};
+
+export const refreshAccessToken = async (req, res, next) => {
+  try {
+    // request values
+    const userId = req.user.id;
+
+    // generate new access token
+    const accessToken = generateAccessToken(userId);
+
+    return res.json(
+      apiResponse({
+        message: HTTP_STATUS_MESSAGE.OK,
+        data: {
+          access_token: accessToken,
+        },
+      })
+    );
+  } catch (error) {
+    console.error("error in refreshAccessToken", error);
     return next(error);
   }
 };

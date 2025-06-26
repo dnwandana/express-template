@@ -6,7 +6,7 @@ A RESTful API template built with Express.js, Knex.js, and PostgreSQL.
 
 - Express.js with ES Modules
 - PostgreSQL database with Knex.js query builder
-- JWT authentication
+- JWT access token and refresh token authentication
 - Password hashing with Argon2
 - Input validation with Joi
 - Security with Helmet
@@ -19,14 +19,13 @@ A RESTful API template built with Express.js, Knex.js, and PostgreSQL.
 
 ## Setup
 
-1. Clone the repository
-2. Install dependencies:
+1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. Create a `.env` file in the root directory with the following variables:
+2. Create a `.env` file in the root directory with the following variables:
 
 ```
 # application
@@ -37,20 +36,22 @@ PORT=3000
 DATABASE_URL=postgresql://pg_user:pg_password@pg_host/pg_database
 
 # JWT
-JWT_SECRET=jwt_secret_key
-JWT_EXPIRES_IN=1d
+ACCESS_TOKEN_SECRET=ACCESS_TOKEN_SECRET_key
+ACCESS_TOKEN_EXPIRES_IN=15m
+REFRESH_TOKEN_SECRET=REFRESH_TOKEN_SECRET_key
+REFRESH_TOKEN_EXPIRES_IN=7d
 ```
 
-4. Create the database:
-
-```bash
-createdb express_template
-```
-
-5. Run migrations:
+3. Run migrations:
 
 ```bash
 npm run migrate
+```
+
+4. Seed the database:
+
+```bash
+npm run seed
 ```
 
 ## Running the Application
