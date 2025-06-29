@@ -36,20 +36,65 @@ export const requireTodoIdParam = (req, res, next) => {
 
 export const getTodos = async (req, res, next) => {
   try {
+    // query schema validation for pagination
+    const querySchema = joi.object({
+      page: joi.number().integer().min(1).default(1),
+      limit: joi.number().integer().min(1).max(100).default(10),
+      sort_by: joi.string().valid("updated_at", "title").default("updated_at"),
+      sort_order: joi.string().valid("asc", "desc").default("desc"),
+    });
+
+    const { error, value } = querySchema.validate(req.query);
+    if (error) {
+      throw new HttpError(
+        HTTP_STATUS_CODE.BAD_REQUEST,
+        error.details[0].message
+      );
+    }
+
     // request values
     const userId = req.user.id;
+    const { page, limit, sort_by, sort_order } = value;
 
-    // get todos
-    const todos = await todoModel.findMany({ user_id: userId }, [
-      { column: "updated_at", order: "desc" },
+    // calculate offset
+    const offset = (page - 1) * limit;
+
+    // get total count and todos simultaneously
+    const [totalResult, todos] = await Promise.all([
+      todoModel.count({ user_id: userId }),
+      todoModel.findManyPaginated(
+        { user_id: userId },
+        {
+          limit,
+          offset,
+          orders: [{ column: sort_by, order: sort_order }],
+        }
+      ),
     ]);
+
+    // pagination information
+    const total = parseInt(totalResult.count);
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    const pagination = {
+      current_page: page,
+      total_pages: totalPages,
+      total_items: total,
+      items_per_page: limit,
+      has_next_page: hasNextPage,
+      has_previous_page: hasPreviousPage,
+      next_page: hasNextPage ? page + 1 : null,
+      previous_page: hasPreviousPage ? page - 1 : null,
+    };
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
         data: {
           todos: todos,
-          total: todos.length,
+          pagination: pagination,
         },
       })
     );
