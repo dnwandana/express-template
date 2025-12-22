@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "type": "module",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "start": "node src/index.js",
@@ -17,18 +17,18 @@
     "seed:make": "knex seed:make"
   },
   "dependencies": {
-    "argon2": "^0.43.0",
+    "argon2": "^0.43.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
     "helmet": "^8.1.0",
     "joi": "^17.13.3",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "knex": "^3.1.0",
-    "pg": "^8.16.0",
+    "pg": "^8.16.3",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.11"
   }
 }
