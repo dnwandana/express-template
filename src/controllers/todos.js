@@ -3,6 +3,7 @@ import HttpError from "../utils/http-error.js";
 import apiResponse from "../utils/response.js";
 import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
 import * as todoModel from "../models/todos.js";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Express middleware to require a todo_id parameter in the request.
@@ -151,6 +152,7 @@ export const createTodo = async (req, res, next) => {
 
     // create todo
     const [todo] = await todoModel.create({
+      id: uuidv4(),
       user_id: userId,
       title: title,
       description: description,
