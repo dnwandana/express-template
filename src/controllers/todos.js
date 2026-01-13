@@ -4,6 +4,7 @@ import apiResponse from "../utils/response.js";
 import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
 import * as todoModel from "../models/todos.js";
 import { v4 as uuidv4 } from "uuid";
+import logger from "../utils/logger.js";
 
 /**
  * Express middleware to require a todo_id parameter in the request.
@@ -100,7 +101,11 @@ export const getTodos = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in getTodos", error);
+    logger.error("Get todos error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+    });
     return next(error);
   }
 };
@@ -123,7 +128,12 @@ export const getTodo = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in getTodo", error);
+    logger.error("Get todo error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      todoId: req.todoId,
+    });
     return next(error);
   }
 };
@@ -161,6 +171,12 @@ export const createTodo = async (req, res, next) => {
       updated_at: new Date(),
     });
 
+    logger.info("Todo created successfully", {
+      todoId: todo.id,
+      userId: userId,
+      title: title,
+    });
+
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
@@ -170,7 +186,11 @@ export const createTodo = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in createTodo", error);
+    logger.error("Create todo error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+    });
     return next(error);
   }
 };
@@ -209,6 +229,11 @@ export const updateTodo = async (req, res, next) => {
       }
     );
 
+    logger.info("Todo updated successfully", {
+      todoId: todoId,
+      userId: userId,
+    });
+
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
@@ -218,7 +243,12 @@ export const updateTodo = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in updateTodo", error);
+    logger.error("Update todo error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      todoId: req.todoId,
+    });
     return next(error);
   }
 };
@@ -232,13 +262,23 @@ export const deleteTodo = async (req, res, next) => {
     // delete todo
     await todoModel.remove({ id: todoId, user_id: userId });
 
+    logger.info("Todo deleted successfully", {
+      todoId: todoId,
+      userId: userId,
+    });
+
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
       })
     );
   } catch (error) {
-    console.error("error in deleteTodo", error);
+    logger.error("Delete todo error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      todoId: req.todoId,
+    });
     return next(error);
   }
 };
@@ -270,13 +310,22 @@ export const deleteTodos = async (req, res, next) => {
     );
     await Promise.all(deletePromises);
 
+    logger.info("Multiple todos deleted successfully", {
+      count: todoIds.length,
+      userId: userId,
+    });
+
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
       })
     );
   } catch (error) {
-    console.error("error in deleteTodos", error);
+    logger.error("Delete multiple todos error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+    });
     return next(error);
   }
 };

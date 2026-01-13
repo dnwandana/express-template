@@ -4,6 +4,8 @@ import cors from "cors";
 import helmet from "helmet";
 import routes from "./routes/index.js";
 import { errorHandler, notFoundHandler } from "./middlewares/error.js";
+import { httpLogger, requestLogger } from "./middlewares/logger.js";
+import logger from "./utils/logger.js";
 
 // initialize express app
 const app = express();
@@ -15,6 +17,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// logging middleware
+app.use(httpLogger);
+app.use(requestLogger);
+
 // routes
 app.use("/api", routes);
 
@@ -24,5 +30,8 @@ app.use(errorHandler);
 
 // start server
 app.listen(PORT, () => {
-  console.log(`Server is up and running on port ${PORT}`);
+  logger.info(`Server started successfully`, {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+  });
 });

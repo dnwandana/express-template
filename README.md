@@ -25,18 +25,20 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 - **Error Handling**: Centralized error handling middleware
 - **OpenAPI Spec**: API documentation included (`openapi.json`)
 - **Environment Config**: dotenv for environment-specific settings
+- **Logging**: Winston + Morgan for structured logging with daily rotation
 
 ## Tech Stack
 
-| Component          | Version                    | Description                |
-| ------------------ | -------------------------- | -------------------------- |
-| **Runtime**        | Node.js >=24.0.0           | JavaScript runtime         |
-| **Framework**      | Express.js ^5.2.1          | Web application framework  |
-| **Database**       | PostgreSQL ^8.16.3         | Relational database        |
-| **ORM**            | Knex.js ^3.1.0             | Query builder & migrations |
-| **Authentication** | JWT ^9.0.3, Argon2 ^0.43.1 | Token-based auth & hashing |
-| **Validation**     | Joi ^17.13.3               | Schema validation          |
-| **Security**       | Helmet ^8.1.0, CORS ^2.8.5 | Security middleware        |
+| Component          | Version                         | Description                |
+| ------------------ | ------------------------------- | -------------------------- |
+| **Runtime**        | Node.js >=24.0.0                | JavaScript runtime         |
+| **Framework**      | Express.js ^5.2.1               | Web application framework  |
+| **Database**       | PostgreSQL ^8.16.3              | Relational database        |
+| **ORM**            | Knex.js ^3.1.0                  | Query builder & migrations |
+| **Authentication** | JWT ^9.0.3, Argon2 ^0.43.1       | Token-based auth & hashing |
+| **Validation**     | Joi ^17.13.3                    | Schema validation          |
+| **Security**       | Helmet ^8.1.0, CORS ^2.8.5      | Security middleware        |
+| **Logging**        | Winston ^3.19.0, Morgan ^1.10.1 | Structured logging         |
 
 ## Prerequisites
 
@@ -77,6 +79,7 @@ Create a `.env` file in the project root with the following variables:
 | `ACCESS_TOKEN_EXPIRES_IN`  | Access token lifetime        | `15m`         | No       |
 | `REFRESH_TOKEN_SECRET`     | Secret for refresh tokens    | -             | Yes      |
 | `REFRESH_TOKEN_EXPIRES_IN` | Refresh token lifetime       | `7d`          | No       |
+| `LOG_LEVEL`                | Logging level                | `info`        | No       |
 
 **Example DATABASE_URL:**
 
@@ -85,6 +88,49 @@ postgresql://username:password@localhost:5432/database_name
 ```
 
 **Security Note:** In production, use strong, randomly generated secrets for JWT tokens.
+
+## Logging
+
+This template includes a comprehensive logging system powered by Winston and Morgan:
+
+### Features
+
+- **Structured Logging**: JSON-formatted logs for easy parsing and analysis
+- **Daily Rotation**: Automatic log file rotation (keeps 14 days of logs)
+- **Multiple Transports**: Console (development) and file (all environments)
+- **HTTP Request Logging**: Morgan middleware for HTTP request/response logging
+- **Log Levels**: error, warn, info, http, debug
+
+### Log Files
+
+Logs are stored in the `logs/` directory:
+
+- `error-YYYY-MM-DD.log` - Error-level logs only
+- `combined-YYYY-MM-DD.log` - All logs (info level and above)
+
+### Log Levels
+
+Set the `LOG_LEVEL` environment variable to control logging verbosity:
+
+| Level   | Description                          |
+| ------- | ------------------------------------ |
+| `error` | Error messages only                  |
+| `warn`  | Warnings and errors                  |
+| `info`  | Informational messages (default)     |
+| `http`  | HTTP request logging                 |
+| `debug` | Debug information (verbose output)   |
+
+### Usage Example
+
+```javascript
+import logger from "./utils/logger.js";
+
+// Different log levels
+logger.error("Error message", { errorDetails: "..." });
+logger.warn("Warning message");
+logger.info("Info message", { userId: "123", action: "login" });
+logger.debug("Debug message", { data: "..." });
+```
 
 ## Development Commands
 
@@ -158,7 +204,8 @@ express-template/
 │   │   └── todos.controller.js
 │   ├── middlewares/         # Express middleware
 │   │   ├── authorization.js  # JWT verification
-│   │   └── error.js          # Error handling
+│   │   ├── error.js          # Error handling
+│   │   └── logger.js         # HTTP request logging
 │   ├── models/              # Data access layer
 │   │   ├── users.model.js
 │   │   └── todos.model.js
@@ -171,11 +218,15 @@ express-template/
 │   │   ├── constant.js       # HTTP constants
 │   │   ├── http-error.js     # Custom error class
 │   │   ├── jwt.js            # JWT utilities
+│   │   ├── logger.js         # Winston logger
 │   │   └── response.js       # Response formatter
 │   └── index.js              # Application entry point
 ├── database/
 │   ├── migrations/          # Database migration files
 │   └── seeds/               # Database seed files
+├── logs/                    # Application logs (created at runtime)
+│   ├── error-YYYY-MM-DD.log   # Error logs
+│   └── combined-YYYY-MM-DD.log # All logs
 ├── openapi.json             # OpenAPI 3.0 specification
 ├── knexfile.js              # Knex configuration
 ├── CLAUDE.md                # AI assistant reference

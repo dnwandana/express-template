@@ -12,6 +12,7 @@ This template provides a production-ready foundation for building RESTful APIs w
 - Input validation with Joi
 - Database migrations with Knex.js
 - Security best practices (Helmet, CORS, Argon2)
+- Comprehensive logging with Winston and Morgan
 
 **Who should use this guide?** Developers who want to clone this template and extend it with new features.
 
@@ -135,7 +136,14 @@ export const createTodo = async (req, res, next) => {
       updated_at: new Date(),
     });
 
-    // 4. Send response
+    // 4. Log success
+    logger.info("Todo created successfully", {
+      todoId: todo.id,
+      userId: userId,
+      title: title,
+    });
+
+    // 5. Send response
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
@@ -143,7 +151,11 @@ export const createTodo = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in createTodo", error);
+    logger.error("Create todo error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+    });
     return next(error);
   }
 };
@@ -156,6 +168,7 @@ export const createTodo = async (req, res, next) => {
 - Use `HttpError` for known error conditions
 - Use `apiResponse` for consistent response format
 - Access authenticated user via `req.user.id` (when using `requireAccessToken`)
+- Use `logger` for important events (user actions, errors, etc.)
 
 #### Routes (`src/routes/`)
 
@@ -259,7 +272,56 @@ import cors from "cors";
 app.use(cors());
 ```
 
+#### Logging Middleware (`src/middlewares/logger.js`)
+
+HTTP request logging using Morgan and custom middleware:
+
+```javascript
+import { httpLogger, requestLogger } from "./middlewares/logger.js";
+
+// Morgan-based HTTP logger (logs all HTTP requests)
+app.use(httpLogger);
+
+// Custom request logger (logs request/response details with timing)
+app.use(requestLogger);
+```
+
+**Features:**
+
+- `httpLogger`: Morgan middleware that logs HTTP method, URL, status, response time
+- `requestLogger`: Custom middleware that logs detailed request/response information
+
 ### Utilities Explained
+
+#### `src/utils/logger.js` - Winston Logger
+
+Comprehensive logging utility using Winston with daily log rotation:
+
+```javascript
+import logger from "../utils/logger.js";
+
+// Log at different levels
+logger.error("Error message", { errorDetails: "..." });
+logger.warn("Warning message");
+logger.info("Info message", { userId: "123", action: "login" });
+logger.http("HTTP request", { method: "GET", url: "/api/todos" });
+logger.debug("Debug message", { data: "..." });
+```
+
+**Features:**
+
+- Daily log rotation (keeps 14 days)
+- Separate error and combined log files
+- Console output with colors (development)
+- JSON format for file logs
+- Configurable log level via `LOG_LEVEL` environment variable
+
+**Best practices:**
+
+- Use appropriate log levels (error for errors, info for important events, etc.)
+- Include relevant context in metadata (userId, action, etc.)
+- Log security events (authentication failures, unauthorized access)
+- Avoid logging sensitive data (passwords, tokens, PII)
 
 #### `src/utils/jwt.js` - JWT Token Management
 
@@ -457,6 +519,7 @@ import apiResponse from "../utils/response.js";
 import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
 import * as categoryModel from "../models/categories.js";
 import { v4 as uuidv4 } from "uuid";
+import logger from "../utils/logger.js";
 
 // Middleware to validate category_id parameter
 export const requireCategoryIdParam = (req, res, next) => {
@@ -488,7 +551,11 @@ export const getCategories = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in getCategories", error);
+    logger.error("Get categories error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+    });
     return next(error);
   }
 };
@@ -511,7 +578,12 @@ export const getCategory = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in getCategory", error);
+    logger.error("Get category error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      categoryId: req.categoryId,
+    });
     return next(error);
   }
 };
@@ -544,6 +616,12 @@ export const createCategory = async (req, res, next) => {
       updated_at: new Date(),
     });
 
+    logger.info("Category created successfully", {
+      categoryId: category.id,
+      userId: userId,
+      name: name,
+    });
+
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
@@ -551,7 +629,11 @@ export const createCategory = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in createCategory", error);
+    logger.error("Create category error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+    });
     return next(error);
   }
 };
@@ -592,7 +674,12 @@ export const updateCategory = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in updateCategory", error);
+    logger.error("Update category error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      categoryId: req.categoryId,
+    });
     return next(error);
   }
 };
@@ -611,7 +698,12 @@ export const deleteCategory = async (req, res, next) => {
       })
     );
   } catch (error) {
-    console.error("error in deleteCategory", error);
+    logger.error("Delete category error", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+      categoryId: req.categoryId,
+    });
     return next(error);
   }
 };
@@ -887,11 +979,17 @@ All errors follow this format:
 Always wrap controller logic in try-catch:
 
 ```javascript
+import logger from "../utils/logger.js";
+
 export const myController = async (req, res, next) => {
   try {
     // Controller logic here
   } catch (error) {
-    console.error("error in myController", error);
+    logger.error("Error in myController", {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id,
+    });
     return next(error); // Pass to error middleware
   }
 };
