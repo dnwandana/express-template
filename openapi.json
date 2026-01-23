@@ -365,7 +365,16 @@
             "nullable": true
           }
         },
-        "required": ["current_page", "total_pages", "total_items", "items_per_page", "has_next_page", "has_previous_page", "next_page", "previous_page"]
+        "required": [
+          "current_page",
+          "total_pages",
+          "total_items",
+          "items_per_page",
+          "has_next_page",
+          "has_previous_page",
+          "next_page",
+          "previous_page"
+        ]
       },
       "StandardResponse": {
         "type": "object",
