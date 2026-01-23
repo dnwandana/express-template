@@ -36,51 +36,51 @@ Models handle all database operations using the Knex query builder. Each model e
 **Example: `src/models/todos.js`**
 
 ```javascript
-import db from "../config/database.js";
+import db from "../config/database.js"
 
-const TABLE_NAME = "todos";
+const TABLE_NAME = "todos"
 
 // Create a new record
 export const create = (todo) => {
-  return db.insert(todo).into(TABLE_NAME).returning("*");
-};
+  return db.insert(todo).into(TABLE_NAME).returning("*")
+}
 
 // Find one record by conditions
 export const findOne = (conditions) => {
-  return db.select("*").from(TABLE_NAME).where(conditions).first();
-};
+  return db.select("*").from(TABLE_NAME).where(conditions).first()
+}
 
 // Find many records with optional sorting
 export const findMany = (conditions, orders = null) => {
-  let query = db.select("*").from(TABLE_NAME).where(conditions);
+  let query = db.select("*").from(TABLE_NAME).where(conditions)
   if (orders) {
-    query = query.orderBy(orders);
+    query = query.orderBy(orders)
   }
-  return query;
-};
+  return query
+}
 
 // Find with pagination
 export const findManyPaginated = (conditions, options = {}) => {
-  const { limit = 10, offset = 0, orders = null } = options;
-  let query = db.select("*").from(TABLE_NAME).where(conditions);
-  if (orders) query = query.orderBy(orders);
-  return query.limit(limit).offset(offset);
-};
+  const { limit = 10, offset = 0, orders = null } = options
+  let query = db.select("*").from(TABLE_NAME).where(conditions)
+  if (orders) query = query.orderBy(orders)
+  return query.limit(limit).offset(offset)
+}
 
 // Count records
 export const count = (conditions) => {
-  return db.count("* as count").from(TABLE_NAME).where(conditions).first();
-};
+  return db.count("* as count").from(TABLE_NAME).where(conditions).first()
+}
 
 // Update records
 export const update = (conditions, data) => {
-  return db.update(data).from(TABLE_NAME).where(conditions).returning("*");
-};
+  return db.update(data).from(TABLE_NAME).where(conditions).returning("*")
+}
 
 // Delete records
 export const remove = (conditions) => {
-  return db.delete().from(TABLE_NAME).where(conditions);
-};
+  return db.delete().from(TABLE_NAME).where(conditions)
+}
 ```
 
 **Key patterns:**
@@ -97,12 +97,12 @@ Controllers contain business logic, validate requests, and coordinate between mo
 **Example: `src/controllers/todos.js`**
 
 ```javascript
-import joi from "joi";
-import HttpError from "../utils/http-error.js";
-import apiResponse from "../utils/response.js";
-import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
-import * as todoModel from "../models/todos.js";
-import { v4 as uuidv4 } from "uuid";
+import joi from "joi"
+import HttpError from "../utils/http-error.js"
+import apiResponse from "../utils/response.js"
+import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
+import * as todoModel from "../models/todos.js"
+import { v4 as uuidv4 } from "uuid"
 
 export const createTodo = async (req, res, next) => {
   try {
@@ -111,19 +111,16 @@ export const createTodo = async (req, res, next) => {
       title: joi.string().required(),
       description: joi.string().optional(),
       is_completed: joi.boolean().optional(),
-    });
+    })
 
-    const { error, value } = bodySchema.validate(req.body);
+    const { error, value } = bodySchema.validate(req.body)
     if (error) {
-      throw new HttpError(
-        HTTP_STATUS_CODE.BAD_REQUEST,
-        error.details[0].message
-      );
+      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
     // 2. Extract values
-    const userId = req.user.id;
-    const { title, description, is_completed } = value;
+    const userId = req.user.id
+    const { title, description, is_completed } = value
 
     // 3. Call model
     const [todo] = await todoModel.create({
@@ -134,31 +131,31 @@ export const createTodo = async (req, res, next) => {
       is_completed,
       created_at: new Date(),
       updated_at: new Date(),
-    });
+    })
 
     // 4. Log success
     logger.info("Todo created successfully", {
       todoId: todo.id,
       userId: userId,
       title: title,
-    });
+    })
 
     // 5. Send response
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
         data: { todo },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Create todo error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 ```
 
 **Key patterns:**
@@ -177,39 +174,39 @@ Routes define URL endpoints and map them to controller functions.
 **Example: `src/routes/todos.js`**
 
 ```javascript
-import { Router } from "express";
-import * as todoController from "../controllers/todos.js";
+import { Router } from "express"
+import * as todoController from "../controllers/todos.js"
 
-const router = Router();
+const router = Router()
 
 router
   .route("/")
   .get(todoController.getTodos)
   .post(todoController.createTodo)
-  .delete(todoController.deleteTodos);
+  .delete(todoController.deleteTodos)
 
 router
   .route("/:todo_id")
   .get(todoController.requireTodoIdParam, todoController.getTodo)
   .put(todoController.requireTodoIdParam, todoController.updateTodo)
-  .delete(todoController.requireTodoIdParam, todoController.deleteTodo);
+  .delete(todoController.requireTodoIdParam, todoController.deleteTodo)
 
-export default router;
+export default router
 ```
 
 **Register routes in `src/routes/index.js`:**
 
 ```javascript
-import { Router } from "express";
-import { requireAccessToken } from "../middlewares/authorization.js";
-import todosRoutes from "./todos.js";
+import { Router } from "express"
+import { requireAccessToken } from "../middlewares/authorization.js"
+import todosRoutes from "./todos.js"
 
-const router = Router();
+const router = Router()
 
 // Apply authentication middleware to all todo routes
-router.use("/todos", requireAccessToken, todosRoutes);
+router.use("/todos", requireAccessToken, todosRoutes)
 
-export default router;
+export default router
 ```
 
 **Key patterns:**
@@ -228,9 +225,9 @@ Protects routes by verifying JWT tokens.
 **`requireAccessToken`** - For protected routes:
 
 ```javascript
-import { requireAccessToken } from "../middlewares/authorization.js";
+import { requireAccessToken } from "../middlewares/authorization.js"
 
-router.use("/todos", requireAccessToken, todosRoutes);
+router.use("/todos", requireAccessToken, todosRoutes)
 ```
 
 After successful verification, `req.user.id` contains the user's ID.
@@ -238,9 +235,9 @@ After successful verification, `req.user.id` contains the user's ID.
 **`requireRefreshToken`** - For token refresh endpoint:
 
 ```javascript
-import { requireRefreshToken } from "../middlewares/authorization.js";
+import { requireRefreshToken } from "../middlewares/authorization.js"
 
-router.post("/refresh", requireRefreshToken, authController.refreshAccessToken);
+router.post("/refresh", requireRefreshToken, authController.refreshAccessToken)
 ```
 
 #### Error Handling (`src/middlewares/error.js`)
@@ -250,10 +247,10 @@ Centralized error handling that catches all errors and returns consistent respon
 Always load this **last** in `src/index.js`:
 
 ```javascript
-import { errorHandler, notFoundHandler } from "./middlewares/error.js";
+import { errorHandler, notFoundHandler } from "./middlewares/error.js"
 
-app.use(notFoundHandler); // 404 handler
-app.use(errorHandler); // Must be last
+app.use(notFoundHandler) // 404 handler
+app.use(errorHandler) // Must be last
 ```
 
 #### Security Middleware
@@ -261,15 +258,15 @@ app.use(errorHandler); // Must be last
 **Helmet** - Security HTTP headers (configured in `src/index.js`):
 
 ```javascript
-import helmet from "helmet";
-app.use(helmet());
+import helmet from "helmet"
+app.use(helmet())
 ```
 
 **CORS** - Cross-origin resource sharing:
 
 ```javascript
-import cors from "cors";
-app.use(cors());
+import cors from "cors"
+app.use(cors())
 ```
 
 #### Logging Middleware (`src/middlewares/logger.js`)
@@ -277,13 +274,13 @@ app.use(cors());
 HTTP request logging using Morgan and custom middleware:
 
 ```javascript
-import { httpLogger, requestLogger } from "./middlewares/logger.js";
+import { httpLogger, requestLogger } from "./middlewares/logger.js"
 
 // Morgan-based HTTP logger (logs all HTTP requests)
-app.use(httpLogger);
+app.use(httpLogger)
 
 // Custom request logger (logs request/response details with timing)
-app.use(requestLogger);
+app.use(requestLogger)
 ```
 
 **Features:**
@@ -298,14 +295,14 @@ app.use(requestLogger);
 Comprehensive logging utility using Winston with daily log rotation:
 
 ```javascript
-import logger from "../utils/logger.js";
+import logger from "../utils/logger.js"
 
 // Log at different levels
-logger.error("Error message", { errorDetails: "..." });
-logger.warn("Warning message");
-logger.info("Info message", { userId: "123", action: "login" });
-logger.http("HTTP request", { method: "GET", url: "/api/todos" });
-logger.debug("Debug message", { data: "..." });
+logger.error("Error message", { errorDetails: "..." })
+logger.warn("Warning message")
+logger.info("Info message", { userId: "123", action: "login" })
+logger.http("HTTP request", { method: "GET", url: "/api/todos" })
+logger.debug("Debug message", { data: "..." })
 ```
 
 **Features:**
@@ -326,11 +323,11 @@ logger.debug("Debug message", { data: "..." });
 #### `src/utils/jwt.js` - JWT Token Management
 
 ```javascript
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js"
 
 // Generate tokens
-const accessToken = generateAccessToken(userId);
-const refreshToken = generateRefreshToken(userId);
+const accessToken = generateAccessToken(userId)
+const refreshToken = generateRefreshToken(userId)
 ```
 
 **Access Token:**
@@ -348,58 +345,58 @@ const refreshToken = generateRefreshToken(userId);
 #### `src/utils/argon2.js` - Password Hashing
 
 ```javascript
-import { hashPassword, verifyPassword } from "../utils/argon2.js";
+import { hashPassword, verifyPassword } from "../utils/argon2.js"
 
 // Hash a password (for signup)
-const hashedPassword = await hashPassword(plainPassword);
+const hashedPassword = await hashPassword(plainPassword)
 
 // Verify a password (for signin)
-const isValid = await verifyPassword(hashedPassword, plainPassword);
+const isValid = await verifyPassword(hashedPassword, plainPassword)
 ```
 
 #### `src/utils/response.js` - Response Formatter
 
 ```javascript
-import apiResponse from "../utils/response.js";
+import apiResponse from "../utils/response.js"
 
 // Success response
 res.json(
   apiResponse({
     message: "OK",
     data: { todo: { id: 1, title: "Example" } },
-  })
-);
+  }),
+)
 
 // Response without data
-res.json(apiResponse({ message: "OK" }));
+res.json(apiResponse({ message: "OK" }))
 ```
 
 #### `src/utils/http-error.js` - Custom Error Class
 
 ```javascript
-import HttpError from "../utils/http-error.js";
-import { HTTP_STATUS_CODE } from "../utils/constant.js";
+import HttpError from "../utils/http-error.js"
+import { HTTP_STATUS_CODE } from "../utils/constant.js"
 
 // Throw HTTP errors
-throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "Todo not found");
-throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid credentials");
+throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "Todo not found")
+throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid credentials")
 ```
 
 #### `src/utils/constant.js` - HTTP Constants
 
 ```javascript
-import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
+import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
 
 // Status codes
-HTTP_STATUS_CODE.OK; // 200
-HTTP_STATUS_CODE.CREATED; // 201
-HTTP_STATUS_CODE.BAD_REQUEST; // 400
-HTTP_STATUS_CODE.UNAUTHORIZED; // 401
-HTTP_STATUS_CODE.NOT_FOUND; // 404
+HTTP_STATUS_CODE.OK // 200
+HTTP_STATUS_CODE.CREATED // 201
+HTTP_STATUS_CODE.BAD_REQUEST // 400
+HTTP_STATUS_CODE.UNAUTHORIZED // 401
+HTTP_STATUS_CODE.NOT_FOUND // 404
 
 // Status messages
-HTTP_STATUS_MESSAGE.OK;
-HTTP_STATUS_MESSAGE.CREATED;
+HTTP_STATUS_MESSAGE.OK
+HTTP_STATUS_MESSAGE.CREATED
 // etc.
 ```
 
@@ -442,26 +439,22 @@ npm run migrate:make create_categories_table
  */
 export const up = (knex) => {
   return knex.schema.createTable("categories", (table) => {
-    table.uuid("id").primary();
-    table.uuid("user_id").notNullable();
-    table.string("name").notNullable();
-    table.string("color").nullable();
-    table
-      .foreign("user_id")
-      .references("id")
-      .inTable("users")
-      .onDelete("CASCADE");
-    table.timestamps(true, true);
-  });
-};
+    table.uuid("id").primary()
+    table.uuid("user_id").notNullable()
+    table.string("name").notNullable()
+    table.string("color").nullable()
+    table.foreign("user_id").references("id").inTable("users").onDelete("CASCADE")
+    table.timestamps(true, true)
+  })
+}
 
 /**
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */
 export const down = (knex) => {
-  return knex.schema.dropTable("categories");
-};
+  return knex.schema.dropTable("categories")
+}
 ```
 
 **Run the migration:**
@@ -475,37 +468,37 @@ npm run migrate
 Create `src/models/categories.js`:
 
 ```javascript
-import db from "../config/database.js";
+import db from "../config/database.js"
 
-const TABLE_NAME = "categories";
+const TABLE_NAME = "categories"
 
 export const create = (category) => {
-  return db.insert(category).into(TABLE_NAME).returning("*");
-};
+  return db.insert(category).into(TABLE_NAME).returning("*")
+}
 
 export const findOne = (conditions) => {
-  return db.select("*").from(TABLE_NAME).where(conditions).first();
-};
+  return db.select("*").from(TABLE_NAME).where(conditions).first()
+}
 
 export const findMany = (conditions, orders = null) => {
-  let query = db.select("*").from(TABLE_NAME).where(conditions);
+  let query = db.select("*").from(TABLE_NAME).where(conditions)
   if (orders) {
-    query = query.orderBy(orders);
+    query = query.orderBy(orders)
   }
-  return query;
-};
+  return query
+}
 
 export const count = (conditions) => {
-  return db.count("* as count").from(TABLE_NAME).where(conditions).first();
-};
+  return db.count("* as count").from(TABLE_NAME).where(conditions).first()
+}
 
 export const update = (conditions, category) => {
-  return db.update(category).from(TABLE_NAME).where(conditions).returning("*");
-};
+  return db.update(category).from(TABLE_NAME).where(conditions).returning("*")
+}
 
 export const remove = (conditions) => {
-  return db.delete().from(TABLE_NAME).where(conditions);
-};
+  return db.delete().from(TABLE_NAME).where(conditions)
+}
 ```
 
 ### Step 4: Create the Controller
@@ -513,80 +506,80 @@ export const remove = (conditions) => {
 Create `src/controllers/categories.js`:
 
 ```javascript
-import joi from "joi";
-import HttpError from "../utils/http-error.js";
-import apiResponse from "../utils/response.js";
-import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
-import * as categoryModel from "../models/categories.js";
-import { v4 as uuidv4 } from "uuid";
-import logger from "../utils/logger.js";
+import joi from "joi"
+import HttpError from "../utils/http-error.js"
+import apiResponse from "../utils/response.js"
+import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
+import * as categoryModel from "../models/categories.js"
+import { v4 as uuidv4 } from "uuid"
+import logger from "../utils/logger.js"
 
 // Middleware to validate category_id parameter
 export const requireCategoryIdParam = (req, res, next) => {
   const paramSchema = joi.object({
     category_id: joi.string().required(),
-  });
+  })
 
-  const { error, value } = paramSchema.validate(req.params);
+  const { error, value } = paramSchema.validate(req.params)
   if (error) {
-    throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message);
+    throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
   }
 
-  req.categoryId = value.category_id;
-  next();
-};
+  req.categoryId = value.category_id
+  next()
+}
 
 // Get all categories for the authenticated user
 export const getCategories = async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.id
     const categories = await categoryModel.findMany({ user_id: userId }, [
       { column: "created_at", order: "desc" },
-    ]);
+    ])
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
         data: { categories },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Get categories error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 // Get a single category
 export const getCategory = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const categoryId = req.categoryId;
+    const userId = req.user.id
+    const categoryId = req.categoryId
 
     const category = await categoryModel.findOne({
       id: categoryId,
       user_id: userId,
-    });
+    })
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
         data: { category },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Get category error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
       categoryId: req.categoryId,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 // Create a new category
 export const createCategory = async (req, res, next) => {
@@ -594,18 +587,15 @@ export const createCategory = async (req, res, next) => {
     const bodySchema = joi.object({
       name: joi.string().required(),
       color: joi.string().optional(),
-    });
+    })
 
-    const { error, value } = bodySchema.validate(req.body);
+    const { error, value } = bodySchema.validate(req.body)
     if (error) {
-      throw new HttpError(
-        HTTP_STATUS_CODE.BAD_REQUEST,
-        error.details[0].message
-      );
+      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
-    const userId = req.user.id;
-    const { name, color } = value;
+    const userId = req.user.id
+    const { name, color } = value
 
     const [category] = await categoryModel.create({
       id: uuidv4(),
@@ -614,29 +604,29 @@ export const createCategory = async (req, res, next) => {
       color,
       created_at: new Date(),
       updated_at: new Date(),
-    });
+    })
 
     logger.info("Category created successfully", {
       categoryId: category.id,
       userId: userId,
       name: name,
-    });
+    })
 
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
         data: { category },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Create category error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 // Update a category
 export const updateCategory = async (req, res, next) => {
@@ -644,19 +634,16 @@ export const updateCategory = async (req, res, next) => {
     const bodySchema = joi.object({
       name: joi.string().required(),
       color: joi.string().optional(),
-    });
+    })
 
-    const { error, value } = bodySchema.validate(req.body);
+    const { error, value } = bodySchema.validate(req.body)
     if (error) {
-      throw new HttpError(
-        HTTP_STATUS_CODE.BAD_REQUEST,
-        error.details[0].message
-      );
+      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
-    const userId = req.user.id;
-    const categoryId = req.categoryId;
-    const { name, color } = value;
+    const userId = req.user.id
+    const categoryId = req.categoryId
+    const { name, color } = value
 
     const [category] = await categoryModel.update(
       { id: categoryId, user_id: userId },
@@ -664,49 +651,49 @@ export const updateCategory = async (req, res, next) => {
         name,
         color,
         updated_at: new Date(),
-      }
-    );
+      },
+    )
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
         data: { category },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Update category error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
       categoryId: req.categoryId,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 // Delete a category
 export const deleteCategory = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const categoryId = req.categoryId;
+    const userId = req.user.id
+    const categoryId = req.categoryId
 
-    await categoryModel.remove({ id: categoryId, user_id: userId });
+    await categoryModel.remove({ id: categoryId, user_id: userId })
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Delete category error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
       categoryId: req.categoryId,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 ```
 
 ### Step 5: Create the Routes
@@ -714,32 +701,20 @@ export const deleteCategory = async (req, res, next) => {
 Create `src/routes/categories.js`:
 
 ```javascript
-import { Router } from "express";
-import * as categoryController from "../controllers/categories.js";
+import { Router } from "express"
+import * as categoryController from "../controllers/categories.js"
 
-const router = Router();
+const router = Router()
 
-router
-  .route("/")
-  .get(categoryController.getCategories)
-  .post(categoryController.createCategory);
+router.route("/").get(categoryController.getCategories).post(categoryController.createCategory)
 
 router
   .route("/:category_id")
-  .get(
-    categoryController.requireCategoryIdParam,
-    categoryController.getCategory
-  )
-  .put(
-    categoryController.requireCategoryIdParam,
-    categoryController.updateCategory
-  )
-  .delete(
-    categoryController.requireCategoryIdParam,
-    categoryController.deleteCategory
-  );
+  .get(categoryController.requireCategoryIdParam, categoryController.getCategory)
+  .put(categoryController.requireCategoryIdParam, categoryController.updateCategory)
+  .delete(categoryController.requireCategoryIdParam, categoryController.deleteCategory)
 
-export default router;
+export default router
 ```
 
 ### Step 6: Register the Routes
@@ -747,19 +722,19 @@ export default router;
 Edit `src/routes/index.js`:
 
 ```javascript
-import { Router } from "express";
-import { requireAccessToken } from "../middlewares/authorization.js";
-import authRoutes from "./authentication.js";
-import todosRoutes from "./todos.js";
-import categoriesRoutes from "./categories.js"; // Add this
+import { Router } from "express"
+import { requireAccessToken } from "../middlewares/authorization.js"
+import authRoutes from "./authentication.js"
+import todosRoutes from "./todos.js"
+import categoriesRoutes from "./categories.js" // Add this
 
-const router = Router();
+const router = Router()
 
-router.use("/auth", authRoutes);
-router.use("/todos", requireAccessToken, todosRoutes);
-router.use("/categories", requireAccessToken, categoriesRoutes); // Add this
+router.use("/auth", authRoutes)
+router.use("/todos", requireAccessToken, todosRoutes)
+router.use("/categories", requireAccessToken, categoriesRoutes) // Add this
 
-export default router;
+export default router
 ```
 
 ### Step 7: Test the Feature
@@ -836,7 +811,7 @@ npm run seed:make <name>
  */
 export const seed = async (knex) => {
   // Clears existing entries
-  await knex("categories").del();
+  await knex("categories").del()
 
   // Inserts seed entries
   await knex("categories").insert([
@@ -848,8 +823,8 @@ export const seed = async (knex) => {
       created_at: new Date(),
       updated_at: new Date(),
     },
-  ]);
-};
+  ])
+}
 ```
 
 **Run seeds:**
@@ -863,19 +838,16 @@ npm run seed
 ### Authentication Flow
 
 1. **Signup** (`POST /api/auth/signup`)
-
    - User provides username and password
    - Password is hashed with Argon2
    - User record is created
 
 2. **Signin** (`POST /api/auth/signin`)
-
    - User provides credentials
    - Password is verified
    - Access token (15min) and refresh token (7d) are returned
 
 3. **Access Protected Routes**
-
    - Include access token in `x-access-token` header
    - `requireAccessToken` middleware verifies the token
    - `req.user.id` contains the authenticated user's ID
@@ -889,15 +861,15 @@ npm run seed
 Apply the `requireAccessToken` middleware to routes that need authentication:
 
 ```javascript
-import { requireAccessToken } from "../middlewares/authorization.js";
+import { requireAccessToken } from "../middlewares/authorization.js"
 
-router.use("/categories", requireAccessToken, categoriesRoutes);
+router.use("/categories", requireAccessToken, categoriesRoutes)
 ```
 
 Access the authenticated user in controllers:
 
 ```javascript
-const userId = req.user.id; // The user's UUID
+const userId = req.user.id // The user's UUID
 ```
 
 ## Input Validation
@@ -911,14 +883,14 @@ const bodySchema = joi.object({
   title: joi.string().min(3).max(100).required(),
   description: joi.string().max(500).optional(),
   is_completed: joi.boolean().optional(),
-});
+})
 
-const { error, value } = bodySchema.validate(req.body);
+const { error, value } = bodySchema.validate(req.body)
 if (error) {
-  throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message);
+  throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
 }
 // Use `value` for validated data
-const { title, description, is_completed } = value;
+const { title, description, is_completed } = value
 ```
 
 ### Query Parameter Validation
@@ -928,9 +900,9 @@ const querySchema = joi.object({
   page: joi.number().integer().min(1).default(1),
   limit: joi.number().integer().min(1).max(100).default(10),
   sort_by: joi.string().valid("name", "created_at").default("created_at"),
-});
+})
 
-const { error, value } = querySchema.validate(req.query);
+const { error, value } = querySchema.validate(req.query)
 ```
 
 ### Path Parameter Validation
@@ -938,9 +910,9 @@ const { error, value } = querySchema.validate(req.query);
 ```javascript
 const paramSchema = joi.object({
   category_id: joi.string().required(),
-});
+})
 
-const { error, value } = paramSchema.validate(req.params);
+const { error, value } = paramSchema.validate(req.params)
 ```
 
 ## Error Handling
@@ -950,17 +922,17 @@ const { error, value } = paramSchema.validate(req.params);
 Use the `HttpError` class for HTTP errors:
 
 ```javascript
-import HttpError from "../utils/http-error.js";
-import { HTTP_STATUS_CODE } from "../utils/constant.js";
+import HttpError from "../utils/http-error.js"
+import { HTTP_STATUS_CODE } from "../utils/constant.js"
 
 // Bad request (validation errors)
-throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, "Invalid input");
+throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, "Invalid input")
 
 // Unauthorized (authentication failed)
-throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid credentials");
+throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid credentials")
 
 // Not found
-throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "Resource not found");
+throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "Resource not found")
 ```
 
 ### Error Response Format
@@ -979,7 +951,7 @@ All errors follow this format:
 Always wrap controller logic in try-catch:
 
 ```javascript
-import logger from "../utils/logger.js";
+import logger from "../utils/logger.js"
 
 export const myController = async (req, res, next) => {
   try {
@@ -989,10 +961,10 @@ export const myController = async (req, res, next) => {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
-    });
-    return next(error); // Pass to error middleware
+    })
+    return next(error) // Pass to error middleware
   }
-};
+}
 ```
 
 ## API Response Format
@@ -1000,18 +972,18 @@ export const myController = async (req, res, next) => {
 All successful responses follow this format:
 
 ```javascript
-import apiResponse from "../utils/response.js";
+import apiResponse from "../utils/response.js"
 
 // Response with data
 res.json(
   apiResponse({
     message: "OK",
     data: { todo: { id: 1, title: "Example" } },
-  })
-);
+  }),
+)
 
 // Response without data
-res.json(apiResponse({ message: "OK" }));
+res.json(apiResponse({ message: "OK" }))
 ```
 
 **Response structure:**
@@ -1035,20 +1007,20 @@ Used in `getTodos` controller:
 const querySchema = joi.object({
   page: joi.number().integer().min(1).default(1),
   limit: joi.number().integer().min(1).max(100).default(10),
-});
+})
 
-const { page, limit } = value;
-const offset = (page - 1) * limit;
+const { page, limit } = value
+const offset = (page - 1) * limit
 
 // Get count and data simultaneously
 const [totalResult, items] = await Promise.all([
   model.count({ user_id: userId }),
   model.findManyPaginated({ user_id: userId }, { limit, offset }),
-]);
+])
 
 // Build pagination metadata
-const total = parseInt(totalResult.count);
-const totalPages = Math.ceil(total / limit);
+const total = parseInt(totalResult.count)
+const totalPages = Math.ceil(total / limit)
 const pagination = {
   current_page: page,
   total_pages: totalPages,
@@ -1058,41 +1030,37 @@ const pagination = {
   has_previous_page: page > 1,
   next_page: page < totalPages ? page + 1 : null,
   previous_page: page > 1 ? page - 1 : null,
-};
+}
 ```
 
 ### Sorting
 
 ```javascript
-const { sort_by, sort_order } = value;
+const { sort_by, sort_order } = value
 
 // Single column sort
-model.findMany({}, [{ column: sort_by, order: sort_order }]);
+model.findMany({}, [{ column: sort_by, order: sort_order }])
 
 // Multiple column sort
 model.findMany({}, [
   { column: "priority", order: "desc" },
   { column: "created_at", order: "desc" },
-]);
+])
 ```
 
 ### Filtering
 
 ```javascript
 // Build dynamic conditions
-const conditions = { user_id: userId };
+const conditions = { user_id: userId }
 
 if (status) {
-  conditions.status = status;
+  conditions.status = status
 }
 
 if (search) {
   // For LIKE queries, use Knex's where builder
-  return db
-    .select("*")
-    .from(TABLE_NAME)
-    .where(conditions)
-    .andWhere("name", "like", `%${search}%`);
+  return db.select("*").from(TABLE_NAME).where(conditions).andWhere("name", "like", `%${search}%`)
 }
 ```
 
@@ -1101,7 +1069,7 @@ if (search) {
 **In migrations:**
 
 ```javascript
-table.foreign("user_id").references("id").inTable("users").onDelete("CASCADE"); // Delete related records when user is deleted
+table.foreign("user_id").references("id").inTable("users").onDelete("CASCADE") // Delete related records when user is deleted
 ```
 
 **Querying related data:**
@@ -1111,7 +1079,7 @@ table.foreign("user_id").references("id").inTable("users").onDelete("CASCADE"); 
 db.select("todos.*", "users.username")
   .from("todos")
   .join("users", "todos.user_id", "users.id")
-  .where("todos.user_id", userId);
+  .where("todos.user_id", userId)
 ```
 
 ## Production Considerations
@@ -1119,13 +1087,11 @@ db.select("todos.*", "users.username")
 ### Security
 
 1. **Environment Variables**
-
    - Never commit `.env` files
    - Use strong, random JWT secrets (32+ characters)
    - Use different secrets for development and production
 
 2. **Database**
-
    - Use connection pooling (configured in `knexfile.js`)
    - Restrict database user privileges
    - Enable SSL for production connections
@@ -1142,12 +1108,11 @@ db.select("todos.*", "users.username")
 
    ```javascript
    // In migrations
-   table.index("user_id"); // Index foreign keys
-   table.index(["user_id", "status"]); // Composite index
+   table.index("user_id") // Index foreign keys
+   table.index(["user_id", "status"]) // Composite index
    ```
 
 2. **Query Optimization**
-
    - Select only needed columns
    - Use `limit()` for large result sets
    - Avoid N+1 queries with joins
@@ -1195,12 +1160,10 @@ db.select("todos.*", "users.username")
 ### Debugging Tips
 
 1. **Check the error handler**
-
    - Errors are logged by `errorHandler` middleware
    - Check console for stack traces
 
 2. **Verify middleware order**
-
    - Security middleware (helmet, cors) should be first
    - Error middleware must be last
 

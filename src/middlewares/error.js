@@ -1,6 +1,6 @@
-import apiResponse from "../utils/response.js";
-import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
-import logger from "../utils/logger.js";
+import apiResponse from "../utils/response.js"
+import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
+import logger from "../utils/logger.js"
 
 /**
  * Express error-handling middleware.
@@ -13,9 +13,9 @@ import logger from "../utils/logger.js";
  * @param {Function} next - Express next middleware function
  * @returns {Object} JSON response with error status and message
  */
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   // Log error details
-  logger.error('Error occurred', {
+  logger.error("Error occurred", {
     message: err.message,
     status: err.status || HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
     stack: err.stack,
@@ -23,15 +23,15 @@ export const errorHandler = (err, req, res, next) => {
     url: req.url,
     ip: req.ip || req.connection.remoteAddress,
     userId: req.user?.id,
-  });
+  })
 
   return res.status(err.status || HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR).json(
     apiResponse({
       message: err.message || HTTP_STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
       data: null,
-    })
-  );
-};
+    }),
+  )
+}
 
 /**
  * Express middleware to handle 404 Not Found errors for unmatched routes.
@@ -43,19 +43,19 @@ export const errorHandler = (err, req, res, next) => {
  * @param {Function} next - Express next middleware function
  * @returns {Object} JSON response with 404 status and not found message
  */
-export const notFoundHandler = (req, res, next) => {
+export const notFoundHandler = (req, res, _next) => {
   // Log 404 errors
-  logger.warn('Route not found', {
+  logger.warn("Route not found", {
     method: req.method,
     url: req.url,
     ip: req.ip || req.connection.remoteAddress,
-    userAgent: req.get('user-agent'),
-  });
+    userAgent: req.get("user-agent"),
+  })
 
   return res.status(HTTP_STATUS_CODE.NOT_FOUND).json(
     apiResponse({
       message: HTTP_STATUS_MESSAGE.NOT_FOUND,
       data: null,
-    })
-  );
-};
+    }),
+  )
+}

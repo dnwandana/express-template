@@ -1,4 +1,4 @@
-import { HTTP_STATUS_MESSAGE } from "./constant.js";
+import { HTTP_STATUS_MESSAGE } from "./constant.js"
 
 /**
  * Sends a standardized JSON response.
@@ -10,4 +10,4 @@ import { HTTP_STATUS_MESSAGE } from "./constant.js";
 export default ({ message = HTTP_STATUS_MESSAGE.OK, data = null }) => ({
   message,
   data,
-});
+})

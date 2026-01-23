@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "dotenv/config"
 
 const config = {
   client: "pg",
@@ -19,19 +19,19 @@ const config = {
   // Database query logging
   log: {
     warn: (message) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`[Knex Warning] ${message}`);
+      if (process.env.NODE_ENV === "development") {
+        console.warn(`[Knex Warning] ${message}`)
       }
     },
     error: (message) => {
-      console.error(`[Knex Error] ${message}`);
+      console.error(`[Knex Error] ${message}`)
     },
     debug: (message) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Knex Debug] ${message}`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[Knex Debug] ${message}`)
       }
     },
   },
-};
+}
 
-export default config;
+export default config

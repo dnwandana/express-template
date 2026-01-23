@@ -1,4 +1,4 @@
-import argon2 from "argon2";
+import argon2 from "argon2"
 
 /**
  * Hashes a plain-text password using the Argon2 algorithm.
@@ -7,8 +7,8 @@ import argon2 from "argon2";
  * @returns {Promise<string>} A promise that resolves to the generated hash.
  */
 export const hashPassword = async (plainPassword) => {
-  return await argon2.hash(plainPassword);
-};
+  return await argon2.hash(plainPassword)
+}
 
 /**
  * Verifies a plain-text password against a previously generated Argon2 hash.
@@ -18,5 +18,5 @@ export const hashPassword = async (plainPassword) => {
  * @returns {Promise<boolean>} A promise that resolves to boolean if the plainPassword matches the hashedPassword.
  */
 export const verifyPassword = async (hashedPassword, plainPassword) => {
-  return await argon2.verify(hashedPassword, plainPassword);
-};
+  return await argon2.verify(hashedPassword, plainPassword)
+}

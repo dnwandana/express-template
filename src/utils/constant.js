@@ -9,7 +9,7 @@ export const HTTP_STATUS_CODE = {
   UNAUTHORIZED: 401,
   NOT_FOUND: 404,
   INTERNAL_SERVER_ERROR: 500,
-};
+}
 
 /**
  * HTTP status messages.
@@ -22,4 +22,4 @@ export const HTTP_STATUS_MESSAGE = {
   UNAUTHORIZED: "Unauthorized",
   NOT_FOUND: "Not Found",
   INTERNAL_SERVER_ERROR: "Internal Server Error",
-};
+}

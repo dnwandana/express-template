@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken"
 
 /**
  * Generates a signed JSON Web Token for a given user.
@@ -9,12 +9,12 @@ import jwt from "jsonwebtoken";
 export const generateAccessToken = (id) => {
   const jwtPayload = {
     id,
-  };
+  }
 
   return jwt.sign(jwtPayload, process.env.ACCESS_TOKEN_SECRET, {
     expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "15m",
-  });
-};
+  })
+}
 
 /**
  * Generates a refresh token for a given user.
@@ -25,12 +25,12 @@ export const generateAccessToken = (id) => {
 export const generateRefreshToken = (id) => {
   const jwtPayload = {
     id,
-  };
+  }
 
   return jwt.sign(jwtPayload, process.env.REFRESH_TOKEN_SECRET, {
     expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
-  });
-};
+  })
+}
 
 /**
  * Verifies and decodes a JSON Web Token.
@@ -40,8 +40,8 @@ export const generateRefreshToken = (id) => {
  * @throws {Error} If verification fails (e.g., token expired, invalid signature, missing secret).
  */
 export const verifyAccessToken = (token) => {
-  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-};
+  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+}
 
 /**
  * Verifies and decodes a refresh token.
@@ -51,5 +51,5 @@ export const verifyAccessToken = (token) => {
  * @throws {Error} If verification fails (e.g., token expired, invalid signature, missing secret).
  */
 export const verifyRefreshToken = (token) => {
-  return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-};
+  return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET)
+}

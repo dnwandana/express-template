@@ -35,7 +35,7 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 | **Framework**      | Express.js ^5.2.1               | Web application framework  |
 | **Database**       | PostgreSQL ^8.16.3              | Relational database        |
 | **ORM**            | Knex.js ^3.1.0                  | Query builder & migrations |
-| **Authentication** | JWT ^9.0.3, Argon2 ^0.43.1       | Token-based auth & hashing |
+| **Authentication** | JWT ^9.0.3, Argon2 ^0.43.1      | Token-based auth & hashing |
 | **Validation**     | Joi ^17.13.3                    | Schema validation          |
 | **Security**       | Helmet ^8.1.0, CORS ^2.8.5      | Security middleware        |
 | **Logging**        | Winston ^3.19.0, Morgan ^1.10.1 | Structured logging         |
@@ -112,24 +112,24 @@ Logs are stored in the `logs/` directory:
 
 Set the `LOG_LEVEL` environment variable to control logging verbosity:
 
-| Level   | Description                          |
-| ------- | ------------------------------------ |
-| `error` | Error messages only                  |
-| `warn`  | Warnings and errors                  |
-| `info`  | Informational messages (default)     |
-| `http`  | HTTP request logging                 |
-| `debug` | Debug information (verbose output)   |
+| Level   | Description                        |
+| ------- | ---------------------------------- |
+| `error` | Error messages only                |
+| `warn`  | Warnings and errors                |
+| `info`  | Informational messages (default)   |
+| `http`  | HTTP request logging               |
+| `debug` | Debug information (verbose output) |
 
 ### Usage Example
 
 ```javascript
-import logger from "./utils/logger.js";
+import logger from "./utils/logger.js"
 
 // Different log levels
-logger.error("Error message", { errorDetails: "..." });
-logger.warn("Warning message");
-logger.info("Info message", { userId: "123", action: "login" });
-logger.debug("Debug message", { data: "..." });
+logger.error("Error message", { errorDetails: "..." })
+logger.warn("Warning message")
+logger.info("Info message", { userId: "123", action: "login" })
+logger.debug("Debug message", { data: "..." })
 ```
 
 ## Development Commands

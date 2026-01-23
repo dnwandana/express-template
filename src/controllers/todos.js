@@ -1,10 +1,10 @@
-import joi from "joi";
-import HttpError from "../utils/http-error.js";
-import apiResponse from "../utils/response.js";
-import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js";
-import * as todoModel from "../models/todos.js";
-import { v4 as uuidv4 } from "uuid";
-import logger from "../utils/logger.js";
+import joi from "joi"
+import HttpError from "../utils/http-error.js"
+import apiResponse from "../utils/response.js"
+import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
+import * as todoModel from "../models/todos.js"
+import { v4 as uuidv4 } from "uuid"
+import logger from "../utils/logger.js"
 
 /**
  * Express middleware to require a todo_id parameter in the request.
@@ -20,21 +20,21 @@ export const requireTodoIdParam = (req, res, next) => {
   // params schema validation
   const paramSchema = joi.object({
     todo_id: joi.string().required(),
-  });
+  })
 
-  const { error, value } = paramSchema.validate(req.params);
+  const { error, value } = paramSchema.validate(req.params)
   if (error) {
-    throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message);
+    throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
   }
 
   // request value
-  const { todo_id } = value;
+  const { todo_id } = value
 
   // assign request value
-  req.todoId = todo_id;
+  req.todoId = todo_id
 
-  next();
-};
+  next()
+}
 
 export const getTodos = async (req, res, next) => {
   try {
@@ -44,22 +44,19 @@ export const getTodos = async (req, res, next) => {
       limit: joi.number().integer().min(1).max(100).default(10),
       sort_by: joi.string().valid("updated_at", "title").default("updated_at"),
       sort_order: joi.string().valid("asc", "desc").default("desc"),
-    });
+    })
 
-    const { error, value } = querySchema.validate(req.query);
+    const { error, value } = querySchema.validate(req.query)
     if (error) {
-      throw new HttpError(
-        HTTP_STATUS_CODE.BAD_REQUEST,
-        error.details[0].message
-      );
+      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
     // request values
-    const userId = req.user.id;
-    const { page, limit, sort_by, sort_order } = value;
+    const userId = req.user.id
+    const { page, limit, sort_by, sort_order } = value
 
     // calculate offset
-    const offset = (page - 1) * limit;
+    const offset = (page - 1) * limit
 
     // get total count and todos simultaneously
     const [totalResult, todos] = await Promise.all([
@@ -70,15 +67,15 @@ export const getTodos = async (req, res, next) => {
           limit,
           offset,
           orders: [{ column: sort_by, order: sort_order }],
-        }
+        },
       ),
-    ]);
+    ])
 
     // pagination information
-    const total = parseInt(totalResult.count);
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
+    const total = parseInt(totalResult.count)
+    const totalPages = Math.ceil(total / limit)
+    const hasNextPage = page < totalPages
+    const hasPreviousPage = page > 1
 
     const pagination = {
       current_page: page,
@@ -89,7 +86,7 @@ export const getTodos = async (req, res, next) => {
       has_previous_page: hasPreviousPage,
       next_page: hasNextPage ? page + 1 : null,
       previous_page: hasPreviousPage ? page - 1 : null,
-    };
+    }
 
     return res.json(
       apiResponse({
@@ -98,26 +95,26 @@ export const getTodos = async (req, res, next) => {
           todos: todos,
           pagination: pagination,
         },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Get todos error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 export const getTodo = async (req, res, next) => {
   try {
     // request values
-    const userId = req.user.id;
-    const todoId = req.todoId;
+    const userId = req.user.id
+    const todoId = req.todoId
 
     // get todo
-    const todo = await todoModel.findOne({ id: todoId, user_id: userId });
+    const todo = await todoModel.findOne({ id: todoId, user_id: userId })
 
     return res.json(
       apiResponse({
@@ -125,18 +122,18 @@ export const getTodo = async (req, res, next) => {
         data: {
           todo: todo,
         },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Get todo error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
       todoId: req.todoId,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 export const createTodo = async (req, res, next) => {
   try {
@@ -145,20 +142,17 @@ export const createTodo = async (req, res, next) => {
       title: joi.string().required(),
       description: joi.string().optional(),
       is_completed: joi.boolean().optional(),
-    });
+    })
 
     // request values
-    const { error, value } = bodySchema.validate(req.body);
+    const { error, value } = bodySchema.validate(req.body)
     if (error) {
-      throw new HttpError(
-        HTTP_STATUS_CODE.BAD_REQUEST,
-        error.details[0].message
-      );
+      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
     // request values
-    const userId = req.user.id;
-    const { title, description, is_completed } = value;
+    const userId = req.user.id
+    const { title, description, is_completed } = value
 
     // create todo
     const [todo] = await todoModel.create({
@@ -169,13 +163,13 @@ export const createTodo = async (req, res, next) => {
       is_completed: is_completed,
       created_at: new Date(),
       updated_at: new Date(),
-    });
+    })
 
     logger.info("Todo created successfully", {
       todoId: todo.id,
       userId: userId,
       title: title,
-    });
+    })
 
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
@@ -183,17 +177,17 @@ export const createTodo = async (req, res, next) => {
         data: {
           todo: todo,
         },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Create todo error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 export const updateTodo = async (req, res, next) => {
   try {
@@ -202,21 +196,18 @@ export const updateTodo = async (req, res, next) => {
       title: joi.string().required(),
       description: joi.string().optional(),
       is_completed: joi.boolean().optional(),
-    });
+    })
 
     // request values
-    const { error, value } = bodySchema.validate(req.body);
+    const { error, value } = bodySchema.validate(req.body)
     if (error) {
-      throw new HttpError(
-        HTTP_STATUS_CODE.BAD_REQUEST,
-        error.details[0].message
-      );
+      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
     // request values
-    const userId = req.user.id;
-    const todoId = req.todoId;
-    const { title, description, is_completed } = value;
+    const userId = req.user.id
+    const todoId = req.todoId
+    const { title, description, is_completed } = value
 
     // update todo
     const [todo] = await todoModel.update(
@@ -226,13 +217,13 @@ export const updateTodo = async (req, res, next) => {
         description: description,
         is_completed: is_completed,
         updated_at: new Date(),
-      }
-    );
+      },
+    )
 
     logger.info("Todo updated successfully", {
       todoId: todoId,
       userId: userId,
-    });
+    })
 
     return res.json(
       apiResponse({
@@ -240,92 +231,89 @@ export const updateTodo = async (req, res, next) => {
         data: {
           todo: todo,
         },
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Update todo error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
       todoId: req.todoId,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 export const deleteTodo = async (req, res, next) => {
   try {
     // request values
-    const userId = req.user.id;
-    const todoId = req.todoId;
+    const userId = req.user.id
+    const todoId = req.todoId
 
     // delete todo
-    await todoModel.remove({ id: todoId, user_id: userId });
+    await todoModel.remove({ id: todoId, user_id: userId })
 
     logger.info("Todo deleted successfully", {
       todoId: todoId,
       userId: userId,
-    });
+    })
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Delete todo error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
       todoId: req.todoId,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
 
 export const deleteTodos = async (req, res, next) => {
   try {
     // query schema validation
     const querySchema = joi.object({
       ids: joi.string().required(),
-    });
+    })
 
     // request values
-    const { error, value } = querySchema.validate(req.query);
+    const { error, value } = querySchema.validate(req.query)
     if (error) {
-      throw new HttpError(
-        HTTP_STATUS_CODE.BAD_REQUEST,
-        error.details[0].message
-      );
+      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
     // request values
-    const userId = req.user.id;
-    const { ids } = value;
-    const todoIds = ids.split(",").map((id) => id.trim());
+    const userId = req.user.id
+    const { ids } = value
+    const todoIds = ids.split(",").map((id) => id.trim())
 
     // delete todos
     const deletePromises = todoIds.map(
-      async (todoId) => await todoModel.remove({ id: todoId, user_id: userId })
-    );
-    await Promise.all(deletePromises);
+      async (todoId) => await todoModel.remove({ id: todoId, user_id: userId }),
+    )
+    await Promise.all(deletePromises)
 
     logger.info("Multiple todos deleted successfully", {
       count: todoIds.length,
       userId: userId,
-    });
+    })
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-      })
-    );
+      }),
+    )
   } catch (error) {
     logger.error("Delete multiple todos error", {
       error: error.message,
       stack: error.stack,
       userId: req.user?.id,
-    });
-    return next(error);
+    })
+    return next(error)
   }
-};
+}
