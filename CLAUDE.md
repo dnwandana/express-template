@@ -57,6 +57,7 @@ npm run seed:make <name>   # Create new seed file
 - Security middleware (Helmet, CORS) configured in `src/index.js`
 
 **Middleware order matters** (`src/index.js`):
+
 1. Security (helmet, cors)
 2. Body parsing (express.json, express.urlencoded)
 3. Logging (httpLogger, requestLogger)
@@ -87,6 +88,7 @@ npm run seed:make <name>   # Create new seed file
 4. Protected routes require `x-access-token` header (NOT `Authorization: Bearer`)
 
 **Token headers**:
+
 - Access token: `x-access-token: <token>` (15min expiry, for API requests)
 - Refresh token: `x-refresh-token: <token>` (7d expiry, for token refresh)
 
