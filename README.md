@@ -26,6 +26,7 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 - **OpenAPI Spec**: API documentation included (`openapi.json`)
 - **Environment Config**: dotenv for environment-specific settings
 - **Logging**: Winston + Morgan for structured logging with daily rotation
+- **Code Quality**: Oxlint for fast linting, Prettier for consistent formatting
 
 ## Tech Stack
 
@@ -39,6 +40,7 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 | **Validation**     | Joi ^17.13.3                    | Schema validation          |
 | **Security**       | Helmet ^8.1.0, CORS ^2.8.5      | Security middleware        |
 | **Logging**        | Winston ^3.19.0, Morgan ^1.10.1 | Structured logging         |
+| **Code Quality**   | Oxlint ^1.41.0, Prettier ^3.8.1 | Linting and formatting     |
 
 ## Prerequisites
 
@@ -140,6 +142,17 @@ logger.debug("Debug message", { data: "..." })
 npm run dev      # Start development server with nodemon
 npm start        # Start production server
 ```
+
+### Linting & Formatting
+
+```bash
+npm run lint         # Run Oxlint (linter)
+npm run lint:fix     # Auto-fix issues with Oxlint
+npm run format       # Check formatting with Prettier
+npm run format:fix   # Apply formatting with Prettier
+```
+
+**Note**: Run `npm run lint:fix` and `npm run format:fix` before committing.
 
 ### Database Migrations
 
