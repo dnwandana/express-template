@@ -1,6 +1,5 @@
 import { Router } from "express";
 import {
-  requireAccessToken,
   requireRefreshToken,
 } from "../middlewares/authorization.js";
 import * as authController from "../controllers/authentication.js";
