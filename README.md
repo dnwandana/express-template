@@ -11,6 +11,7 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 - **Security Headers**: Helmet middleware for HTTP protection
 - **CORS**: Cross-origin resource sharing configured
 - **Input Validation**: Joi schemas for request validation
+- **Pagination & Search**: Reusable utility for paginated queries with sorting and case-insensitive search
 
 ### Database & Architecture
 
@@ -134,6 +135,62 @@ logger.info("Info message", { userId: "123", action: "login" })
 logger.debug("Debug message", { data: "..." })
 ```
 
+## Pagination & Search
+
+This template includes a reusable pagination utility (`src/utils/pagination.js`) that handles query validation, parallel data fetching, and metadata construction.
+
+### Query Parameters
+
+| Parameter    | Type    | Default      | Description                                   |
+| ------------ | ------- | ------------ | --------------------------------------------- |
+| `page`       | integer | `1`          | Page number (1-indexed)                       |
+| `limit`      | integer | `10`         | Items per page (max 100)                      |
+| `sort_by`    | string  | first column | Column to sort by (configurable per resource) |
+| `sort_order` | string  | `desc`       | Sort direction (`asc` or `desc`)              |
+| `search`     | string  | `""`         | Case-insensitive search term (max 255 chars)  |
+
+### Example Request
+
+```
+GET /api/todos?page=1&limit=20&sort_by=title&sort_order=asc&search=groceries
+```
+
+### Response Format
+
+```json
+{
+  "message": "OK",
+  "data": {
+    "todos": [...],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 5,
+      "total_items": 100,
+      "items_per_page": 20,
+      "has_next_page": true,
+      "has_previous_page": false,
+      "next_page": 2,
+      "previous_page": null
+    }
+  }
+}
+```
+
+### Adding Pagination to a New Resource
+
+```javascript
+import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
+
+const params = validatePaginationQuery(req.query, ["updated_at", "name"])
+const { data, pagination } = await executePaginatedQuery(
+  model.count,
+  model.findManyPaginated,
+  { user_id: userId },
+  params,
+  ["name"], // searchable columns
+)
+```
+
 ## Development Commands
 
 ### Server
@@ -183,14 +240,14 @@ This template includes an OpenAPI 3.0 specification (`openapi.json`) that docume
 
 ### Todo Endpoints (Example)
 
-| Method | Endpoint              | Description               | Auth Required |
-| ------ | --------------------- | ------------------------- | ------------- |
-| GET    | `/api/todos`          | Get all todos (paginated) | Access Token  |
-| POST   | `/api/todos`          | Create a new todo         | Access Token  |
-| GET    | `/api/todos/:todo_id` | Get single todo           | Access Token  |
-| PUT    | `/api/todos/:todo_id` | Update a todo             | Access Token  |
-| DELETE | `/api/todos/:todo_id` | Delete a todo             | Access Token  |
-| DELETE | `/api/todos?ids=...`  | Delete multiple todos     | Access Token  |
+| Method | Endpoint              | Description                           | Auth Required |
+| ------ | --------------------- | ------------------------------------- | ------------- |
+| GET    | `/api/todos`          | Get all todos (paginated, searchable) | Access Token  |
+| POST   | `/api/todos`          | Create a new todo                     | Access Token  |
+| GET    | `/api/todos/:todo_id` | Get single todo                       | Access Token  |
+| PUT    | `/api/todos/:todo_id` | Update a todo                         | Access Token  |
+| DELETE | `/api/todos/:todo_id` | Delete a todo                         | Access Token  |
+| DELETE | `/api/todos?ids=...`  | Delete multiple todos                 | Access Token  |
 
 ### Authentication Format
 
@@ -232,6 +289,7 @@ express-template/
 │   │   ├── http-error.js     # Custom error class
 │   │   ├── jwt.js            # JWT utilities
 │   │   ├── logger.js         # Winston logger
+│   │   ├── pagination.js     # Reusable pagination & search
 │   │   └── response.js       # Response formatter
 │   └── index.js              # Application entry point
 ├── database/

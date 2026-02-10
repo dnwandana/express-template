@@ -73,6 +73,7 @@ npm run seed:make <name>   # Create new seed file
 - `src/utils/http-error.js`: Custom error class for HTTP errors
 - `src/utils/constant.js`: HTTP status codes and messages
 - `src/utils/logger.js`: Winston logger with daily rotation
+- `src/utils/pagination.js`: Reusable pagination with search, sorting, and metadata
 
 ### Database
 
@@ -103,6 +104,31 @@ All responses follow this structure:
 }
 ```
 
+### Pagination & Search
+
+Reusable pagination is provided by `src/utils/pagination.js` with three named exports:
+
+- `validatePaginationQuery(query, sortableColumns)`: Validates `page`, `limit`, `sort_by`, `sort_order`, and `search` query params. `sortableColumns` configures valid sort fields per resource.
+- `buildPaginationMeta(page, limit, totalItems)`: Builds pagination metadata object.
+- `executePaginatedQuery(countFn, findFn, conditions, params, searchableColumns)`: Runs count + data fetch in parallel, returns `{ data, pagination }`. Pass model `count` and `findManyPaginated` functions directly.
+
+**Usage in a controller:**
+
+```javascript
+import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
+
+const params = validatePaginationQuery(req.query, ["updated_at", "title"])
+const { data, pagination } = await executePaginatedQuery(
+  model.count,
+  model.findManyPaginated,
+  { user_id: userId },
+  params,
+  ["title"], // columns to search with ILIKE
+)
+```
+
+**Model requirements:** Models must expose `count(conditions, options)` and `findManyPaginated(conditions, options)` that support `{ search, searchColumns }` in options for ILIKE filtering.
+
 ### Input Validation
 
 Joi schemas are used for request validation. Schemas are typically defined within controller files before processing logic.
@@ -130,8 +156,8 @@ Required in `.env`:
 When adding a new resource (e.g., "categories"):
 
 1. **Migration**: `npm run migrate:make create_categories_table`
-2. **Model**: Create `src/models/categories.js` with CRUD functions
-3. **Controller**: Create `src/controllers/categories.js` with business logic
+2. **Model**: Create `src/models/categories.js` with CRUD functions (include `count` and `findManyPaginated` with search support for paginated endpoints)
+3. **Controller**: Create `src/controllers/categories.js` with business logic (use pagination utility for list endpoints)
 4. **Routes**: Create `src/routes/categories.js` and register in `src/routes/index.js`
 5. **Validation**: Use Joi schemas in controllers for input validation
 
