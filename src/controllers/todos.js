@@ -5,6 +5,7 @@ import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
 import * as todoModel from "../models/todos.js"
 import { v4 as uuidv4 } from "uuid"
 import logger from "../utils/logger.js"
+import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
 
 /**
  * Express middleware to require a todo_id parameter in the request.
@@ -38,62 +39,25 @@ export const requireTodoIdParam = (req, res, next) => {
 
 export const getTodos = async (req, res, next) => {
   try {
-    // query schema validation for pagination
-    const querySchema = joi.object({
-      page: joi.number().integer().min(1).default(1),
-      limit: joi.number().integer().min(1).max(100).default(10),
-      sort_by: joi.string().valid("updated_at", "title").default("updated_at"),
-      sort_order: joi.string().valid("asc", "desc").default("desc"),
-    })
-
-    const { error, value } = querySchema.validate(req.query)
-    if (error) {
-      throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
-    }
-
     // request values
     const userId = req.user.id
-    const { page, limit, sort_by, sort_order } = value
-
-    // calculate offset
-    const offset = (page - 1) * limit
+    const params = validatePaginationQuery(req.query, ["updated_at", "title"])
 
     // get total count and todos simultaneously
-    const [totalResult, todos] = await Promise.all([
-      todoModel.count({ user_id: userId }),
-      todoModel.findManyPaginated(
-        { user_id: userId },
-        {
-          limit,
-          offset,
-          orders: [{ column: sort_by, order: sort_order }],
-        },
-      ),
-    ])
-
-    // pagination information
-    const total = parseInt(totalResult.count)
-    const totalPages = Math.ceil(total / limit)
-    const hasNextPage = page < totalPages
-    const hasPreviousPage = page > 1
-
-    const pagination = {
-      current_page: page,
-      total_pages: totalPages,
-      total_items: total,
-      items_per_page: limit,
-      has_next_page: hasNextPage,
-      has_previous_page: hasPreviousPage,
-      next_page: hasNextPage ? page + 1 : null,
-      previous_page: hasPreviousPage ? page - 1 : null,
-    }
+    const { data: todos, pagination } = await executePaginatedQuery(
+      todoModel.count,
+      todoModel.findManyPaginated,
+      { user_id: userId },
+      params,
+      ["title"],
+    )
 
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
         data: {
-          todos: todos,
-          pagination: pagination,
+          todos,
+          pagination,
         },
       }),
     )
