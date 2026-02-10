@@ -119,6 +119,9 @@
           },
           {
             "$ref": "#/components/parameters/SortOrder"
+          },
+          {
+            "$ref": "#/components/parameters/Search"
           }
         ],
         "responses": {
@@ -584,6 +587,16 @@
           "default": "desc"
         },
         "description": "Sort order"
+      },
+      "Search": {
+        "name": "search",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "maxLength": 255,
+          "default": ""
+        },
+        "description": "Search term to filter results by title (case-insensitive)"
       }
     },
     "responses": {
