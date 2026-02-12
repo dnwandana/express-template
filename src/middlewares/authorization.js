@@ -30,10 +30,10 @@ export const requireAccessToken = (req, res, next) => {
     const decoded = verifyAccessToken(accessToken)
 
     // set user in request
-    req.user = decoded
+    req.user = { id: decoded.id }
 
     // Log successful authentication
-    logger.info("User authenticated successfully", {
+    logger.debug("User authenticated successfully", {
       userId: decoded.id,
       method: req.method,
       url: req.url,
@@ -95,10 +95,10 @@ export const requireRefreshToken = (req, res, next) => {
     const decoded = verifyRefreshToken(refreshToken)
 
     // set user in request
-    req.user = decoded
+    req.user = { id: decoded.id }
 
     // Log successful token refresh
-    logger.info("Refresh token verified successfully", {
+    logger.debug("Refresh token verified successfully", {
       userId: decoded.id,
       method: req.method,
       url: req.url,

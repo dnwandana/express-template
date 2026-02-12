@@ -7,6 +7,24 @@ import crypto from "node:crypto"
 import logger from "../utils/logger.js"
 import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
 
+const todoIdParamSchema = joi.object({
+  todo_id: joi.string().uuid().required(),
+})
+
+const todoBodySchema = joi
+  .object({
+    title: joi.string().max(255).required(),
+    description: joi.string().max(5000).optional(),
+    is_completed: joi.boolean().optional(),
+  })
+  .options({ stripUnknown: true })
+
+const deleteTodosQuerySchema = joi
+  .object({
+    ids: joi.string().required(),
+  })
+  .options({ stripUnknown: true })
+
 /**
  * Express middleware to require a todo_id parameter in the request.
  *
@@ -18,12 +36,7 @@ import { validatePaginationQuery, executePaginatedQuery } from "../utils/paginat
  * @returns {Object} JSON response with error status and message
  */
 export const requireTodoIdParam = (req, res, next) => {
-  // params schema validation
-  const paramSchema = joi.object({
-    todo_id: joi.string().required(),
-  })
-
-  const { error, value } = paramSchema.validate(req.params)
+  const { error, value } = todoIdParamSchema.validate(req.params)
   if (error) {
     throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
   }
@@ -101,15 +114,8 @@ export const getTodo = async (req, res, next) => {
 
 export const createTodo = async (req, res, next) => {
   try {
-    // request body schema validation
-    const bodySchema = joi.object({
-      title: joi.string().required(),
-      description: joi.string().optional(),
-      is_completed: joi.boolean().optional(),
-    })
-
     // request values
-    const { error, value } = bodySchema.validate(req.body)
+    const { error, value } = todoBodySchema.validate(req.body)
     if (error) {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
@@ -155,15 +161,8 @@ export const createTodo = async (req, res, next) => {
 
 export const updateTodo = async (req, res, next) => {
   try {
-    // request body schema validation
-    const bodySchema = joi.object({
-      title: joi.string().required(),
-      description: joi.string().optional(),
-      is_completed: joi.boolean().optional(),
-    })
-
     // request values
-    const { error, value } = bodySchema.validate(req.body)
+    const { error, value } = todoBodySchema.validate(req.body)
     if (error) {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
@@ -240,13 +239,7 @@ export const deleteTodo = async (req, res, next) => {
 
 export const deleteTodos = async (req, res, next) => {
   try {
-    // query schema validation
-    const querySchema = joi.object({
-      ids: joi.string().required(),
-    })
-
-    // request values
-    const { error, value } = querySchema.validate(req.query)
+    const { error, value } = deleteTodosQuerySchema.validate(req.query)
     if (error) {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }

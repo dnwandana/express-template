@@ -1,4 +1,5 @@
 import apiResponse from "../utils/response.js"
+import HttpError from "../utils/http-error.js"
 import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
 import logger from "../utils/logger.js"
 
@@ -14,20 +15,31 @@ import logger from "../utils/logger.js"
  * @returns {Object} JSON response with error status and message
  */
 export const errorHandler = (err, req, res, _next) => {
-  // Log error details
-  logger.error("Error occurred", {
+  const isHttpError = err instanceof HttpError
+  const isProduction = process.env.NODE_ENV === "production"
+
+  // Log error details (stack only outside production)
+  const logPayload = {
     message: err.message,
     status: err.status || HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
-    stack: err.stack,
     method: req.method,
     url: req.url,
     ip: req.ip || req.connection.remoteAddress,
     userId: req.user?.id,
-  })
+  }
+  if (!isProduction) {
+    logPayload.stack = err.stack
+  }
+  logger.error("Error occurred", logPayload)
+
+  let clientMessage = err.message || HTTP_STATUS_MESSAGE.INTERNAL_SERVER_ERROR
+  if (isProduction && !isHttpError) {
+    clientMessage = HTTP_STATUS_MESSAGE.INTERNAL_SERVER_ERROR
+  }
 
   return res.status(err.status || HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR).json(
     apiResponse({
-      message: err.message || HTTP_STATUS_MESSAGE.INTERNAL_SERVER_ERROR,
+      message: clientMessage,
       data: null,
     }),
   )

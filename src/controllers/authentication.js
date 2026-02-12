@@ -7,16 +7,27 @@ import { hashPassword, verifyPassword } from "../utils/argon2.js"
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js"
 import logger from "../utils/logger.js"
 
+const signupSchema = joi
+  .object({
+    username: joi.string().min(5).required(),
+    password: joi.string().min(8).required(),
+    confirmation_password: joi.string().required().valid(joi.ref("password")).messages({
+      "any.only": "confirmation_password must match password",
+    }),
+  })
+  .options({ stripUnknown: true })
+
+const signinSchema = joi
+  .object({
+    username: joi.string().min(5).required(),
+    password: joi.string().min(8).required(),
+  })
+  .options({ stripUnknown: true })
+
 export const signup = async (req, res, next) => {
   try {
-    // validation schema
-    const bodySchema = joi.object({
-      username: joi.string().min(5).required(),
-      password: joi.string().min(8).required(),
-    })
-
     // validate request body
-    const { error, value } = bodySchema.validate(req.body)
+    const { error, value } = signupSchema.validate(req.body)
     if (error) {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
@@ -71,14 +82,8 @@ export const signup = async (req, res, next) => {
 
 export const signin = async (req, res, next) => {
   try {
-    // validation schema
-    const bodySchema = joi.object({
-      username: joi.string().min(5).required(),
-      password: joi.string().min(8).required(),
-    })
-
     // validate request body
-    const { error, value } = bodySchema.validate(req.body)
+    const { error, value } = signinSchema.validate(req.body)
     if (error) {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
@@ -87,7 +92,7 @@ export const signin = async (req, res, next) => {
     const { username, password } = value
 
     // check if user exists
-    const user = await userModel.findOne({ username })
+    const user = await userModel.findOneWithPassword({ username })
     if (!user) {
       throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "invalid credentials")
     }

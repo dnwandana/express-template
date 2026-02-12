@@ -40,7 +40,7 @@ const createRotateTransport = (filename, level) => {
 const transports = [
   // Console transport for development
   new winston.transports.Console({
-    format: consoleFormat,
+    format: process.env.NODE_ENV === "production" ? logFormat : consoleFormat,
   }),
 
   // Error log file
