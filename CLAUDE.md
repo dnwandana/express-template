@@ -36,10 +36,14 @@ No pre-commit hooks. Run `npm run lint:fix && npm run format:fix` before committ
 
 1. Security (helmet with strict CSP, cors with explicit origins)
 2. Body parsing (express.json + express.urlencoded, both 100kb limit)
-3. Logging (Morgan httpLogger + custom requestLogger)
-4. Routes (`/api`)
-5. 404 handler (notFoundHandler)
-6. Error handler (errorHandler) — **must be last**
+3. HPP (HTTP Parameter Pollution protection)
+4. Rate limiting (generalLimiter — global, configurable via `RATE_LIMIT_GENERAL_MAX`)
+5. Logging (Morgan httpLogger + custom requestLogger)
+6. Routes (`/api`) — auth routes have additional `authLimiter`
+7. 404 handler (notFoundHandler)
+8. Error handler (errorHandler) — **must be last**
+
+`trust proxy` is set to `1` so rate limiting works correctly behind reverse proxies.
 
 ### Request Context Flow
 
@@ -52,6 +56,8 @@ Authorization middleware sets `req.user = { id }` from decoded JWT. Route-level 
 - POST `/api/auth/refresh` → returns new access token only
 
 Token headers: `x-access-token` and `x-refresh-token` (NOT `Authorization: Bearer`). JWT algorithm pinned to HS256 with explicit verification.
+
+Validation: username 3–30 chars, alphanumeric + `.` `_` `-` only. Password 8–72 chars (72 is Argon2's input limit). Auth routes are rate-limited via `authLimiter` (default 10 req/15min).
 
 ### Error Handling
 
@@ -68,6 +74,8 @@ Controllers throw `HttpError(status, message)` → caught by `next(error)` → c
 - `validatePaginationQuery(query, sortableColumns)` — validates page, limit, sort_by, sort_order, search
 - `buildPaginationMeta(page, limit, totalItems)` — pagination metadata object
 - `executePaginatedQuery(countFn, findFn, conditions, params, searchableColumns)` — runs count + data fetch in parallel
+
+Search input is sanitized via `escapeIlike()` from `src/utils/sanitize.js` — escapes `%`, `_`, and `\` so they are treated as literals in PostgreSQL ILIKE patterns.
 
 **Usage in controllers:**
 
@@ -88,7 +96,7 @@ const { data, pagination } = await executePaginatedQuery(
 
 ### Bulk Delete
 
-DELETE `/api/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string.
+DELETE `/api/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string. Validated: max 50 IDs, each must be a valid UUID. Uses `removeMany(ids, conditions)` with `whereIn` for a single query instead of per-ID deletes.
 
 ## Code Style
 
@@ -103,7 +111,7 @@ DELETE `/api/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string.
 
 Required: `DATABASE_URL`, `ACCESS_TOKEN_SECRET` (≥32 chars), `REFRESH_TOKEN_SECRET` (≥32 chars)
 
-Optional with defaults: `NODE_ENV` (development), `PORT` (3000), `ACCESS_TOKEN_EXPIRES_IN` (15m), `REFRESH_TOKEN_EXPIRES_IN` (7d), `LOG_LEVEL` (info), `CORS_ALLOWED_ORIGINS` (http://localhost:8080)
+Optional with defaults: `NODE_ENV` (development), `PORT` (3000), `ACCESS_TOKEN_EXPIRES_IN` (15m), `REFRESH_TOKEN_EXPIRES_IN` (7d), `LOG_LEVEL` (info), `CORS_ALLOWED_ORIGINS` (http://localhost:8080), `RATE_LIMIT_AUTH_MAX` (10), `RATE_LIMIT_GENERAL_MAX` (100)
 
 ## Database
 

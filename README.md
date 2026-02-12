@@ -10,7 +10,9 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 - **Password Hashing**: Argon2 for secure password storage
 - **Security Headers**: Helmet with strict Content Security Policy and referrer protection
 - **CORS**: Configurable allowed origins via environment variable
-- **Input Validation**: Joi schemas for request validation
+- **Rate Limiting**: Configurable per-route and global rate limits (express-rate-limit)
+- **HPP Protection**: HTTP Parameter Pollution prevention
+- **Input Validation**: Joi schemas for request validation with ILIKE wildcard sanitization
 - **Environment Validation**: Startup checks for required variables and secret strength
 - **Body Size Limits**: 100kb cap on JSON and URL-encoded payloads
 - **Pagination & Search**: Reusable utility for paginated queries with sorting and case-insensitive search
@@ -33,17 +35,18 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 
 ## Tech Stack
 
-| Component          | Version                         | Description                |
-| ------------------ | ------------------------------- | -------------------------- |
-| **Runtime**        | Node.js >=24.0.0                | JavaScript runtime         |
-| **Framework**      | Express.js ^5.2.1               | Web application framework  |
-| **Database**       | PostgreSQL ^8.16.3              | Relational database        |
-| **ORM**            | Knex.js ^3.1.0                  | Query builder & migrations |
-| **Authentication** | JWT ^9.0.3, Argon2 ^0.43.1      | Token-based auth & hashing |
-| **Validation**     | Joi ^17.13.3                    | Schema validation          |
-| **Security**       | Helmet ^8.1.0, CORS ^2.8.5      | Security middleware        |
-| **Logging**        | Winston ^3.19.0, Morgan ^1.10.1 | Structured logging         |
-| **Code Quality**   | Oxlint ^1.41.0, Prettier ^3.8.1 | Linting and formatting     |
+| Component          | Version                                | Description                |
+| ------------------ | -------------------------------------- | -------------------------- |
+| **Runtime**        | Node.js >=24.0.0                       | JavaScript runtime         |
+| **Framework**      | Express.js ^5.2.1                      | Web application framework  |
+| **Database**       | PostgreSQL ^8.16.3                     | Relational database        |
+| **ORM**            | Knex.js ^3.1.0                         | Query builder & migrations |
+| **Authentication** | JWT ^9.0.3, Argon2 ^0.43.1             | Token-based auth & hashing |
+| **Validation**     | Joi ^17.13.3                           | Schema validation          |
+| **Security**       | Helmet ^8.1.0, CORS ^2.8.5, HPP ^0.2.3 | Security middleware        |
+| **Rate Limiting**  | express-rate-limit ^8.2.1              | Request throttling         |
+| **Logging**        | Winston ^3.19.0, Morgan ^1.10.1        | Structured logging         |
+| **Code Quality**   | Oxlint ^1.41.0, Prettier ^3.8.1        | Linting and formatting     |
 
 ## Prerequisites
 
@@ -75,17 +78,19 @@ The API will be available at `http://localhost:3000/api`
 
 Create a `.env` file in the project root with the following variables:
 
-| Variable                   | Description                     | Default                 | Required |
-| -------------------------- | ------------------------------- | ----------------------- | -------- |
-| `NODE_ENV`                 | Environment mode                | `development`           | No       |
-| `PORT`                     | Server port                     | `3000`                  | No       |
-| `DATABASE_URL`             | PostgreSQL connection string    | -                       | Yes      |
-| `ACCESS_TOKEN_SECRET`      | Secret for access tokens        | -                       | Yes      |
-| `ACCESS_TOKEN_EXPIRES_IN`  | Access token lifetime           | `15m`                   | No       |
-| `REFRESH_TOKEN_SECRET`     | Secret for refresh tokens       | -                       | Yes      |
-| `REFRESH_TOKEN_EXPIRES_IN` | Refresh token lifetime          | `7d`                    | No       |
-| `LOG_LEVEL`                | Logging level                   | `info`                  | No       |
-| `CORS_ALLOWED_ORIGINS`     | Comma-separated allowed origins | `http://localhost:8080` | No       |
+| Variable                   | Description                          | Default                 | Required |
+| -------------------------- | ------------------------------------ | ----------------------- | -------- |
+| `NODE_ENV`                 | Environment mode                     | `development`           | No       |
+| `PORT`                     | Server port                          | `3000`                  | No       |
+| `DATABASE_URL`             | PostgreSQL connection string         | -                       | Yes      |
+| `ACCESS_TOKEN_SECRET`      | Secret for access tokens             | -                       | Yes      |
+| `ACCESS_TOKEN_EXPIRES_IN`  | Access token lifetime                | `15m`                   | No       |
+| `REFRESH_TOKEN_SECRET`     | Secret for refresh tokens            | -                       | Yes      |
+| `REFRESH_TOKEN_EXPIRES_IN` | Refresh token lifetime               | `7d`                    | No       |
+| `LOG_LEVEL`                | Logging level                        | `info`                  | No       |
+| `CORS_ALLOWED_ORIGINS`     | Comma-separated allowed origins      | `http://localhost:8080` | No       |
+| `RATE_LIMIT_AUTH_MAX`      | Auth endpoint rate limit (per 15min) | `10`                    | No       |
+| `RATE_LIMIT_GENERAL_MAX`   | Global rate limit (per 15min)        | `100`                   | No       |
 
 **Example DATABASE_URL:**
 
@@ -282,7 +287,8 @@ express-template/
 │   ├── middlewares/         # Express middleware
 │   │   ├── authorization.js  # JWT verification
 │   │   ├── error.js          # Error handling & 404 handler
-│   │   └── logger.js         # HTTP request logging
+│   │   ├── logger.js         # HTTP request logging
+│   │   └── rate-limit.js     # Rate limiting (auth + general)
 │   ├── models/              # Data access layer
 │   │   ├── users.js
 │   │   └── todos.js
@@ -298,6 +304,7 @@ express-template/
 │   │   ├── logger.js         # Winston logger
 │   │   ├── pagination.js     # Reusable pagination & search
 │   │   ├── response.js       # Response formatter
+│   │   ├── sanitize.js       # Input sanitization (ILIKE escaping)
 │   │   └── validate-env.js   # Startup environment validation
 │   └── index.js              # Application entry point
 ├── database/
@@ -344,6 +351,8 @@ npm start
 - JWT secrets are validated at startup (minimum 32 characters)
 - Helmet enforces strict Content Security Policy (`default-src: 'none'`) and `no-referrer` policy
 - CORS is restricted to explicit origins configured via `CORS_ALLOWED_ORIGINS`
+- Rate limiting on auth endpoints (10 req/15min) and globally (100 req/15min), configurable via env vars
+- HPP middleware prevents HTTP Parameter Pollution attacks
 - Request body size is capped at 100kb to prevent payload abuse
 - Configure database firewall rules
 - Keep dependencies updated with `npm audit`
