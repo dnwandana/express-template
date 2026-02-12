@@ -2,8 +2,10 @@ import "dotenv/config"
 import express from "express"
 import cors from "cors"
 import helmet from "helmet"
+import hpp from "hpp"
 import routes from "./routes/index.js"
 import { errorHandler, notFoundHandler } from "./middlewares/error.js"
+import { generalLimiter } from "./middlewares/rate-limit.js"
 import { httpLogger, requestLogger } from "./middlewares/logger.js"
 import logger from "./utils/logger.js"
 import validateEnv from "./utils/validate-env.js"
@@ -13,6 +15,7 @@ validateEnv()
 
 // initialize express app
 const app = express()
+app.set("trust proxy", 1)
 const PORT = process.env.PORT
 
 // middlewares
@@ -33,6 +36,8 @@ app.use(
 )
 app.use(express.json({ limit: "100kb" }))
 app.use(express.urlencoded({ extended: true, limit: "100kb" }))
+app.use(hpp())
+app.use(generalLimiter)
 
 // logging middleware
 app.use(httpLogger)

@@ -14,6 +14,8 @@ const envSchema = joi.object({
   REFRESH_TOKEN_EXPIRES_IN: joi.string().default("7d"),
   LOG_LEVEL: joi.string().valid("error", "warn", "info", "debug").default("info"),
   CORS_ALLOWED_ORIGINS: joi.string().default("http://localhost:8080"),
+  RATE_LIMIT_AUTH_MAX: joi.number().integer().min(1).default(10),
+  RATE_LIMIT_GENERAL_MAX: joi.number().integer().min(1).default(100),
 })
 
 // Only extract app-specific keys from process.env before validating.
@@ -28,6 +30,8 @@ const appEnvKeys = [
   "REFRESH_TOKEN_EXPIRES_IN",
   "LOG_LEVEL",
   "CORS_ALLOWED_ORIGINS",
+  "RATE_LIMIT_AUTH_MAX",
+  "RATE_LIMIT_GENERAL_MAX",
 ]
 
 /**
