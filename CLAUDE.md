@@ -109,7 +109,7 @@ DELETE `/api/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string. V
 
 ## Environment Variables
 
-Required: `DATABASE_URL`, `ACCESS_TOKEN_SECRET` (≥32 chars), `REFRESH_TOKEN_SECRET` (≥32 chars)
+Required: `DATABASE_URL`, `ACCESS_TOKEN_SECRET` (≥32 chars), `REFRESH_TOKEN_SECRET` (≥32 chars), `JWT_ISSUER`, `JWT_AUDIENCE`
 
 Optional with defaults: `NODE_ENV` (development), `PORT` (3000), `ACCESS_TOKEN_EXPIRES_IN` (15m), `REFRESH_TOKEN_EXPIRES_IN` (7d), `LOG_LEVEL` (info), `CORS_ALLOWED_ORIGINS` (http://localhost:8080), `RATE_LIMIT_AUTH_MAX` (10), `RATE_LIMIT_GENERAL_MAX` (100)
 

@@ -87,6 +87,8 @@ Create a `.env` file in the project root with the following variables:
 | `ACCESS_TOKEN_EXPIRES_IN`  | Access token lifetime                | `15m`                   | No       |
 | `REFRESH_TOKEN_SECRET`     | Secret for refresh tokens            | -                       | Yes      |
 | `REFRESH_TOKEN_EXPIRES_IN` | Refresh token lifetime               | `7d`                    | No       |
+| `JWT_ISSUER`               | JWT issuer claim (iss)               | -                       | Yes      |
+| `JWT_AUDIENCE`             | JWT audience claim (aud)             | -                       | Yes      |
 | `LOG_LEVEL`                | Logging level                        | `info`                  | No       |
 | `CORS_ALLOWED_ORIGINS`     | Comma-separated allowed origins      | `http://localhost:8080` | No       |
 | `RATE_LIMIT_AUTH_MAX`      | Auth endpoint rate limit (per 15min) | `10`                    | No       |
