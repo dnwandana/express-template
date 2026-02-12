@@ -309,15 +309,13 @@
             "type": "string",
             "format": "uuid"
           },
-          "user_id": {
-            "type": "string",
-            "format": "uuid"
-          },
           "title": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 255
           },
           "description": {
             "type": "string",
+            "maxLength": 5000,
             "nullable": true
           },
           "is_completed": {
@@ -332,7 +330,7 @@
             "format": "date-time"
           }
         },
-        "required": ["id", "user_id", "title", "is_completed", "created_at", "updated_at"]
+        "required": ["id", "title", "is_completed", "created_at", "updated_at"]
       },
       "Pagination": {
         "type": "object",
@@ -416,9 +414,14 @@
             "type": "string",
             "minLength": 8,
             "description": "Password (minimum 8 characters)"
+          },
+          "confirmation_password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "Must match the password field"
           }
         },
-        "required": ["username", "password"]
+        "required": ["username", "password", "confirmation_password"]
       },
       "SigninRequest": {
         "type": "object",
