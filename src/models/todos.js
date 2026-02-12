@@ -63,3 +63,7 @@ export const update = (conditions, todo) => {
 export const remove = (conditions) => {
   return db.delete().from(TABLE_NAME).where(conditions)
 }
+
+export const removeMany = (ids, conditions) => {
+  return db.delete().from(TABLE_NAME).whereIn("id", ids).andWhere(conditions)
+}

@@ -21,7 +21,23 @@ const todoBodySchema = joi
 
 const deleteTodosQuerySchema = joi
   .object({
-    ids: joi.string().required(),
+    ids: joi
+      .string()
+      .required()
+      .custom((value, helpers) => {
+        const ids = value.split(",").map((id) => id.trim())
+        if (ids.length > 50) {
+          return helpers.error("any.invalid")
+        }
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        for (const id of ids) {
+          if (!uuidRegex.test(id)) {
+            return helpers.error("any.invalid")
+          }
+        }
+        return ids
+      })
+      .messages({ "any.invalid": "ids must be 1-50 comma-separated valid UUIDs" }),
   })
   .options({ stripUnknown: true })
 
@@ -246,14 +262,10 @@ export const deleteTodos = async (req, res, next) => {
 
     // request values
     const userId = req.user.id
-    const { ids } = value
-    const todoIds = ids.split(",").map((id) => id.trim())
+    const todoIds = value.ids
 
     // delete todos
-    const deletePromises = todoIds.map(
-      async (todoId) => await todoModel.remove({ id: todoId, user_id: userId }),
-    )
-    await Promise.all(deletePromises)
+    await todoModel.removeMany(todoIds, { user_id: userId })
 
     logger.info("Multiple todos deleted successfully", {
       count: todoIds.length,

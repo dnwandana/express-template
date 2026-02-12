@@ -9,8 +9,17 @@ import logger from "../utils/logger.js"
 
 const signupSchema = joi
   .object({
-    username: joi.string().min(5).required(),
-    password: joi.string().min(8).required(),
+    username: joi
+      .string()
+      .min(3)
+      .max(30)
+      .pattern(/^[a-zA-Z0-9._-]+$/)
+      .required()
+      .messages({
+        "string.pattern.base":
+          "username must contain only letters, numbers, dots, underscores, or hyphens",
+      }),
+    password: joi.string().min(8).max(72).required(),
     confirmation_password: joi.string().required().valid(joi.ref("password")).messages({
       "any.only": "confirmation_password must match password",
     }),
@@ -19,8 +28,17 @@ const signupSchema = joi
 
 const signinSchema = joi
   .object({
-    username: joi.string().min(5).required(),
-    password: joi.string().min(8).required(),
+    username: joi
+      .string()
+      .min(3)
+      .max(30)
+      .pattern(/^[a-zA-Z0-9._-]+$/)
+      .required()
+      .messages({
+        "string.pattern.base":
+          "username must contain only letters, numbers, dots, underscores, or hyphens",
+      }),
+    password: joi.string().min(8).max(72).required(),
   })
   .options({ stripUnknown: true })
 
