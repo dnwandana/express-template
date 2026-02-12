@@ -1,6 +1,7 @@
 import joi from "joi"
 import HttpError from "./http-error.js"
 import { HTTP_STATUS_CODE } from "./constant.js"
+import { escapeIlike } from "./sanitize.js"
 
 /**
  * Validates pagination query parameters against a Joi schema.
@@ -74,8 +75,12 @@ export const executePaginatedQuery = async (
   const { page, limit, sort_by, sort_order, search } = params
   const offset = (page - 1) * limit
 
-  const searchOptions =
-    search && searchableColumns.length ? { search, searchColumns: searchableColumns } : {}
+  const sanitizedSearch = search ? escapeIlike(search) : ""
+
+  let searchOptions = {}
+  if (sanitizedSearch && searchableColumns.length) {
+    searchOptions = { search: sanitizedSearch, searchColumns: searchableColumns }
+  }
 
   const [countResult, data] = await Promise.all([
     countFn(conditions, searchOptions),
