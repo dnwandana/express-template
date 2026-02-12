@@ -16,6 +16,8 @@ const envSchema = joi.object({
   CORS_ALLOWED_ORIGINS: joi.string().default("http://localhost:8080"),
   RATE_LIMIT_AUTH_MAX: joi.number().integer().min(1).default(10),
   RATE_LIMIT_GENERAL_MAX: joi.number().integer().min(1).default(100),
+  JWT_ISSUER: joi.string().required(),
+  JWT_AUDIENCE: joi.string().required(),
 })
 
 // Only extract app-specific keys from process.env before validating.
@@ -32,6 +34,8 @@ const appEnvKeys = [
   "CORS_ALLOWED_ORIGINS",
   "RATE_LIMIT_AUTH_MAX",
   "RATE_LIMIT_GENERAL_MAX",
+  "JWT_ISSUER",
+  "JWT_AUDIENCE",
 ]
 
 /**

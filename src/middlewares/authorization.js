@@ -29,6 +29,10 @@ export const requireAccessToken = (req, res, next) => {
     // verify token
     const decoded = verifyAccessToken(accessToken)
 
+    if (decoded.type !== "access") {
+      throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid token type")
+    }
+
     // set user in request
     req.user = { id: decoded.id }
 
@@ -93,6 +97,10 @@ export const requireRefreshToken = (req, res, next) => {
 
     // verify token
     const decoded = verifyRefreshToken(refreshToken)
+
+    if (decoded.type !== "refresh") {
+      throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid token type")
+    }
 
     // set user in request
     req.user = { id: decoded.id }

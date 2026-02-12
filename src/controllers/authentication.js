@@ -7,6 +7,11 @@ import { hashPassword, verifyPassword } from "../utils/argon2.js"
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js"
 import logger from "../utils/logger.js"
 
+// Pre-computed dummy hash for timing-safe signin.
+// Ensures verifyPassword always runs, even when the user doesn't exist,
+// so response times don't reveal whether a username is valid.
+const dummyHash = await hashPassword("dummy-timing-safe-password")
+
 const signupSchema = joi
   .object({
     username: joi
@@ -109,15 +114,12 @@ export const signin = async (req, res, next) => {
     // request values
     const { username, password } = value
 
-    // check if user exists
+    // Timing-safe credential check: always run verifyPassword to prevent
+    // response-time differences from revealing whether a username exists.
     const user = await userModel.findOneWithPassword({ username })
-    if (!user) {
-      throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "invalid credentials")
-    }
-
-    // Verify password
-    const isPasswordValid = await verifyPassword(user.password, password)
-    if (!isPasswordValid) {
+    const hashToVerify = user?.password ?? dummyHash
+    const isPasswordValid = await verifyPassword(hashToVerify, password)
+    if (!user || !isPasswordValid) {
       throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "invalid credentials")
     }
 
@@ -156,6 +158,12 @@ export const refreshAccessToken = async (req, res, next) => {
   try {
     // request values
     const userId = req.user.id
+
+    // Verify the user still exists (reject refresh for deleted accounts)
+    const user = await userModel.findOne({ id: userId })
+    if (!user) {
+      throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "invalid credentials")
+    }
 
     // generate new access token
     const accessToken = generateAccessToken(userId)
