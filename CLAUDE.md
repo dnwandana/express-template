@@ -4,115 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Express.js RESTful API template using PostgreSQL, Knex.js, and JWT authentication. The project uses ES Modules (`"type": "module"` in package.json) and requires Node.js v24+.
+Express.js RESTful API template using PostgreSQL, Knex.js, and JWT authentication. ES Modules (`"type": "module"`), Node.js v24+ (pinned in `.nvmrc`).
 
-## Common Commands
-
-### Development
+## Commands
 
 ```bash
-npm run dev          # Start development server with nodemon
-npm start            # Start production server
+npm run dev              # Development server with nodemon
+npm start                # Production server
+npm run lint             # Oxlint (linter)
+npm run lint:fix         # Auto-fix lint issues
+npm run format           # Prettier check
+npm run format:fix       # Prettier fix
+npm run migrate          # Run latest migrations
+npm run migrate:make <n> # Create migration
+npm run migrate:rollback # Rollback last migration
+npm run seed             # Run all seeds
+npm run seed:make <n>    # Create seed file
 ```
 
-### Linting & Formatting
-
-```bash
-npm run lint         # Run Oxlint (linter)
-npm run lint:fix     # Auto-fix issues with Oxlint
-npm run format       # Check formatting with Prettier
-npm run format:fix   # Apply formatting with Prettier
-```
-
-**Note**: No pre-commit hooks are configured. Run `npm run lint:fix` and `npm run format:fix` manually before committing.
-
-### Database Migrations
-
-```bash
-npm run migrate                # Run latest migrations
-npm run migrate:make <name>    # Create new migration file
-npm run migrate:rollback       # Rollback last migration
-```
-
-### Database Seeds
-
-```bash
-npm run seed               # Run all seeds
-npm run seed:make <name>   # Create new seed file
-```
+No pre-commit hooks. Run `npm run lint:fix && npm run format:fix` before committing.
 
 ## Architecture
 
 ### MVC Pattern
 
-- **Models** (`src/models/`): Data access layer using Knex.js query builder
-- **Controllers** (`src/controllers/`): Business logic for handling requests
-- **Routes** (`src/routes/`): Express route definitions, aggregated in `routes/index.js`
+- **Models** (`src/models/`): Knex.js queries only — no business logic
+- **Controllers** (`src/controllers/`): Business logic, Joi validation, coordinates models
+- **Routes** (`src/routes/`): Route definitions + param validation middleware, aggregated in `routes/index.js`
 
-### Middleware Stack
+### Middleware Order (critical — in `src/index.js`)
 
-- `src/middlewares/authorization.js`: JWT verification for protected routes
-- `src/middlewares/error.js`: Centralized error handling (always loaded last in `src/index.js`)
-- `src/middlewares/logger.js`: HTTP request logging using Morgan and custom middleware
-- Security middleware (Helmet, CORS) configured in `src/index.js`
-
-**Middleware order matters** (`src/index.js`):
-
-1. Security (helmet, cors)
-2. Body parsing (express.json, express.urlencoded)
-3. Logging (httpLogger, requestLogger)
-4. Routes
+1. Security (helmet with strict CSP, cors with explicit origins)
+2. Body parsing (express.json + express.urlencoded, both 100kb limit)
+3. Logging (Morgan httpLogger + custom requestLogger)
+4. Routes (`/api`)
 5. 404 handler (notFoundHandler)
-6. Error handler (errorHandler) - must be last
+6. Error handler (errorHandler) — **must be last**
 
-### Utilities
+### Request Context Flow
 
-- `src/utils/jwt.js`: JWT token creation and verification (separate access/refresh tokens)
-- `src/utils/argon2.js`: Password hashing and verification
-- `src/utils/response.js`: Standard API response formatter
-- `src/utils/http-error.js`: Custom error class for HTTP errors
-- `src/utils/constant.js`: HTTP status codes and messages
-- `src/utils/logger.js`: Winston logger with daily rotation
-- `src/utils/pagination.js`: Reusable pagination with search, sorting, and metadata
-
-### Database
-
-- **Knex configuration**: `knexfile.js` in project root
-- **Migrations**: `database/migrations/` (use YYYYMMDDHHMMSS_filename format)
-- **Seeds**: `database/seeds/`
+Authorization middleware sets `req.user = { id }` from decoded JWT. Route-level param validation middleware (e.g., `requireTodoIdParam`) validates and stores `req.todoId`. Controllers access these directly — all data queries filter by `user_id` to prevent cross-user access.
 
 ### Authentication Flow
 
-1. POST `/api/auth/signup` - Create user with Argon2 hashed password
-2. POST `/api/auth/signin` - Exchange credentials for access + refresh tokens
-3. POST `/api/auth/refresh` - Exchange refresh token for new access token
-4. Protected routes require `x-access-token` header (NOT `Authorization: Bearer`)
+- POST `/api/auth/signup` → creates user, returns `{ id, username }` (no tokens)
+- POST `/api/auth/signin` → returns `{ id, username, accessToken, refreshToken }`
+- POST `/api/auth/refresh` → returns new access token only
 
-**Token headers**:
+Token headers: `x-access-token` and `x-refresh-token` (NOT `Authorization: Bearer`). JWT algorithm pinned to HS256 with explicit verification.
 
-- Access token: `x-access-token: <token>` (15min expiry, for API requests)
-- Refresh token: `x-refresh-token: <token>` (7d expiry, for token refresh)
+### Error Handling
 
-### API Response Format
+Controllers throw `HttpError(status, message)` → caught by `next(error)` → centralized `errorHandler` logs full context (stack, IP, userId, method, URL) but only returns `{ message }` to client. `notFoundHandler` logs 404s with user-agent tracking.
 
-All responses follow this structure:
+### Environment Validation
 
-```javascript
-{
-  message: "Status message",
-  data: { /* response data */ }
-}
-```
+`src/utils/validate-env.js` runs at the very top of `src/index.js`, **before** Express initializes. Validates all required env vars with Joi (`abortEarly: false` to report all errors at once). JWT secrets must be ≥32 characters. Validated values are written back to `process.env`. Fails with `process.exit(1)` — not HttpError (Express doesn't exist yet).
 
 ### Pagination & Search
 
-Reusable pagination is provided by `src/utils/pagination.js` with three named exports:
+`src/utils/pagination.js` exports three functions:
 
-- `validatePaginationQuery(query, sortableColumns)`: Validates `page`, `limit`, `sort_by`, `sort_order`, and `search` query params. `sortableColumns` configures valid sort fields per resource.
-- `buildPaginationMeta(page, limit, totalItems)`: Builds pagination metadata object.
-- `executePaginatedQuery(countFn, findFn, conditions, params, searchableColumns)`: Runs count + data fetch in parallel, returns `{ data, pagination }`. Pass model `count` and `findManyPaginated` functions directly.
+- `validatePaginationQuery(query, sortableColumns)` — validates page, limit, sort_by, sort_order, search
+- `buildPaginationMeta(page, limit, totalItems)` — pagination metadata object
+- `executePaginatedQuery(countFn, findFn, conditions, params, searchableColumns)` — runs count + data fetch in parallel
 
-**Usage in a controller:**
+**Usage in controllers:**
 
 ```javascript
 import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
@@ -123,42 +80,44 @@ const { data, pagination } = await executePaginatedQuery(
   model.findManyPaginated,
   { user_id: userId },
   params,
-  ["title"], // columns to search with ILIKE
+  ["title"], // columns searched with ILIKE
 )
 ```
 
-**Model requirements:** Models must expose `count(conditions, options)` and `findManyPaginated(conditions, options)` that support `{ search, searchColumns }` in options for ILIKE filtering.
+**Model contract:** Models must expose `count(conditions, options)` and `findManyPaginated(conditions, options)` where options supports `{ search, searchColumns, limit, offset, orders }`. Search uses `ILIKE %term%` on specified columns.
 
-### Input Validation
+### Bulk Delete
 
-Joi schemas are used for request validation. Schemas are typically defined within controller files before processing logic.
+DELETE `/api/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string.
 
 ## Code Style
 
-- **Linter**: Oxlint (`.oxlintrc.json`) - code quality only, no formatting rules
-- **Formatter**: Prettier (`.prettierrc.json`) - no semicolons, 2-space indent, 100 char line width
-- **File naming**: `kebab-case.js` for files (e.g., `http-error.js`, `authorization.js`)
+- **Formatter**: Prettier — no semicolons, 2-space indent, 100 char width
+- **Linter**: Oxlint — correctness (error), suspicious (warn)
+- **File naming**: kebab-case (`http-error.js`, `validate-env.js`)
+- **UUIDs**: Use `crypto.randomUUID()` from `node:crypto` (not uuid package)
+- **Imports**: ES modules only. Models use named exports. Controllers imported as namespace (`import * as controller`)
+- **Responses**: Always use `apiResponse({ message, data })` from `src/utils/response.js`
 
 ## Environment Variables
 
-Required in `.env`:
+Required: `DATABASE_URL`, `ACCESS_TOKEN_SECRET` (≥32 chars), `REFRESH_TOKEN_SECRET` (≥32 chars)
 
-- `NODE_ENV`: development/production
-- `PORT`: Server port (default: 3000)
-- `DATABASE_URL`: PostgreSQL connection string
-- `ACCESS_TOKEN_SECRET` / `REFRESH_TOKEN_SECRET`: JWT secrets
-- `ACCESS_TOKEN_EXPIRES_IN`: Access token expiry (default: 15m)
-- `REFRESH_TOKEN_EXPIRES_IN`: Refresh token expiry (default: 7d)
-- `LOG_LEVEL`: Logging level (default: info)
+Optional with defaults: `NODE_ENV` (development), `PORT` (3000), `ACCESS_TOKEN_EXPIRES_IN` (15m), `REFRESH_TOKEN_EXPIRES_IN` (7d), `LOG_LEVEL` (info), `CORS_ALLOWED_ORIGINS` (http://localhost:8080)
 
-## Adding a New Feature
+## Database
 
-When adding a new resource (e.g., "categories"):
+- **Config**: `knexfile.js` — connection pool min 2, max 10
+- **Migrations**: `database/migrations/` — format `YYYYMMDDHHMMSS_name.js`
+- **Seeds**: `database/seeds/` — 5 test users (password: "secretpassword"), 35+ todos
+- Tables use `timestamps(true, true)` for timezone-aware created_at/updated_at
+- Todos foreign key to users with CASCADE delete
 
-1. **Migration**: `npm run migrate:make create_categories_table`
-2. **Model**: Create `src/models/categories.js` with CRUD functions (include `count` and `findManyPaginated` with search support for paginated endpoints)
-3. **Controller**: Create `src/controllers/categories.js` with business logic (use pagination utility for list endpoints)
-4. **Routes**: Create `src/routes/categories.js` and register in `src/routes/index.js`
-5. **Validation**: Use Joi schemas in controllers for input validation
+## Adding a New Resource
 
-See `TEMPLATE_GUIDE.md` for detailed step-by-step instructions.
+1. Migration: `npm run migrate:make create_<resource>_table`
+2. Model: `src/models/<resource>.js` — CRUD + `count` and `findManyPaginated` with search support
+3. Controller: `src/controllers/<resource>.js` — Joi validation inline, pagination utility for list endpoints
+4. Routes: `src/routes/<resource>.js` — register in `src/routes/index.js`
+
+See `TEMPLATE_GUIDE.md` for detailed walkthrough.
