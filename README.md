@@ -6,11 +6,13 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 
 ### Authentication & Security
 
-- **JWT Authentication**: Dual-token system with access tokens (15min) and refresh tokens (7 days)
+- **JWT Authentication**: Dual-token system with access tokens (15min) and refresh tokens (7 days), pinned to HS256
 - **Password Hashing**: Argon2 for secure password storage
-- **Security Headers**: Helmet middleware for HTTP protection
-- **CORS**: Cross-origin resource sharing configured
+- **Security Headers**: Helmet with strict Content Security Policy and referrer protection
+- **CORS**: Configurable allowed origins via environment variable
 - **Input Validation**: Joi schemas for request validation
+- **Environment Validation**: Startup checks for required variables and secret strength
+- **Body Size Limits**: 100kb cap on JSON and URL-encoded payloads
 - **Pagination & Search**: Reusable utility for paginated queries with sorting and case-insensitive search
 
 ### Database & Architecture
@@ -73,16 +75,17 @@ The API will be available at `http://localhost:3000/api`
 
 Create a `.env` file in the project root with the following variables:
 
-| Variable                   | Description                  | Default       | Required |
-| -------------------------- | ---------------------------- | ------------- | -------- |
-| `NODE_ENV`                 | Environment mode             | `development` | No       |
-| `PORT`                     | Server port                  | `3000`        | No       |
-| `DATABASE_URL`             | PostgreSQL connection string | -             | Yes      |
-| `ACCESS_TOKEN_SECRET`      | Secret for access tokens     | -             | Yes      |
-| `ACCESS_TOKEN_EXPIRES_IN`  | Access token lifetime        | `15m`         | No       |
-| `REFRESH_TOKEN_SECRET`     | Secret for refresh tokens    | -             | Yes      |
-| `REFRESH_TOKEN_EXPIRES_IN` | Refresh token lifetime       | `7d`          | No       |
-| `LOG_LEVEL`                | Logging level                | `info`        | No       |
+| Variable                   | Description                     | Default                 | Required |
+| -------------------------- | ------------------------------- | ----------------------- | -------- |
+| `NODE_ENV`                 | Environment mode                | `development`           | No       |
+| `PORT`                     | Server port                     | `3000`                  | No       |
+| `DATABASE_URL`             | PostgreSQL connection string    | -                       | Yes      |
+| `ACCESS_TOKEN_SECRET`      | Secret for access tokens        | -                       | Yes      |
+| `ACCESS_TOKEN_EXPIRES_IN`  | Access token lifetime           | `15m`                   | No       |
+| `REFRESH_TOKEN_SECRET`     | Secret for refresh tokens       | -                       | Yes      |
+| `REFRESH_TOKEN_EXPIRES_IN` | Refresh token lifetime          | `7d`                    | No       |
+| `LOG_LEVEL`                | Logging level                   | `info`                  | No       |
+| `CORS_ALLOWED_ORIGINS`     | Comma-separated allowed origins | `http://localhost:8080` | No       |
 
 **Example DATABASE_URL:**
 
@@ -90,7 +93,11 @@ Create a `.env` file in the project root with the following variables:
 postgresql://username:password@localhost:5432/database_name
 ```
 
-**Security Note:** In production, use strong, randomly generated secrets for JWT tokens.
+**Security Note:** JWT secrets must be at least 32 characters. The server validates all required environment variables at startup and will refuse to start with missing or weak secrets. Generate secrets with:
+
+```bash
+openssl rand -hex 32
+```
 
 ## Logging
 
@@ -270,19 +277,19 @@ express-template/
 ├── src/
 │   ├── config/              # Configuration files (Knex)
 │   ├── controllers/         # Business logic layer
-│   │   ├── auth.controller.js
-│   │   └── todos.controller.js
+│   │   ├── authentication.js
+│   │   └── todos.js
 │   ├── middlewares/         # Express middleware
 │   │   ├── authorization.js  # JWT verification
-│   │   ├── error.js          # Error handling
+│   │   ├── error.js          # Error handling & 404 handler
 │   │   └── logger.js         # HTTP request logging
 │   ├── models/              # Data access layer
-│   │   ├── users.model.js
-│   │   └── todos.model.js
+│   │   ├── users.js
+│   │   └── todos.js
 │   ├── routes/              # API route definitions
 │   │   ├── index.js          # Route aggregator
-│   │   ├── auth.routes.js
-│   │   └── todos.routes.js
+│   │   ├── authentication.js
+│   │   └── todos.js
 │   ├── utils/               # Utility functions
 │   │   ├── argon2.js         # Password hashing
 │   │   ├── constant.js       # HTTP constants
@@ -290,7 +297,8 @@ express-template/
 │   │   ├── jwt.js            # JWT utilities
 │   │   ├── logger.js         # Winston logger
 │   │   ├── pagination.js     # Reusable pagination & search
-│   │   └── response.js       # Response formatter
+│   │   ├── response.js       # Response formatter
+│   │   └── validate-env.js   # Startup environment validation
 │   └── index.js              # Application entry point
 ├── database/
 │   ├── migrations/          # Database migration files
@@ -298,10 +306,12 @@ express-template/
 ├── logs/                    # Application logs (created at runtime)
 │   ├── error-YYYY-MM-DD.log   # Error logs
 │   └── combined-YYYY-MM-DD.log # All logs
-├── openapi.json             # OpenAPI 3.0 specification
-├── knexfile.js              # Knex configuration
-├── CLAUDE.md                # AI assistant reference
-├── TEMPLATE_GUIDE.md        # Guide for extending this template
+├── .editorconfig              # Editor configuration
+├── .nvmrc                     # Node.js version (24)
+├── openapi.json               # OpenAPI 3.0 specification
+├── knexfile.js                # Knex configuration
+├── CLAUDE.md                  # AI assistant reference
+├── TEMPLATE_GUIDE.md          # Guide for extending this template
 └── package.json
 ```
 
@@ -331,9 +341,11 @@ npm start
 ### Security Considerations
 
 - Use HTTPS in production
-- Set strong JWT secrets (minimum 32 characters)
+- JWT secrets are validated at startup (minimum 32 characters)
+- Helmet enforces strict Content Security Policy (`default-src: 'none'`) and `no-referrer` policy
+- CORS is restricted to explicit origins configured via `CORS_ALLOWED_ORIGINS`
+- Request body size is capped at 100kb to prevent payload abuse
 - Configure database firewall rules
-- Enable rate limiting for public endpoints
 - Keep dependencies updated with `npm audit`
 - Never commit `.env` file to version control
 
