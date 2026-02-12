@@ -6,16 +6,33 @@ import routes from "./routes/index.js"
 import { errorHandler, notFoundHandler } from "./middlewares/error.js"
 import { httpLogger, requestLogger } from "./middlewares/logger.js"
 import logger from "./utils/logger.js"
+import validateEnv from "./utils/validate-env.js"
+
+// validate environment variables before anything else
+validateEnv()
 
 // initialize express app
 const app = express()
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT
 
 // middlewares
-app.use(helmet())
-app.use(cors())
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(
+  helmet({
+    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"] } },
+    referrerPolicy: { policy: "no-referrer" },
+  }),
+)
+app.use(
+  cors({
+    origin: process.env.CORS_ALLOWED_ORIGINS?.split(",").map((s) => s.trim()) || [
+      "http://localhost:8080",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "x-access-token", "x-refresh-token"],
+  }),
+)
+app.use(express.json({ limit: "100kb" }))
+app.use(express.urlencoded({ extended: true, limit: "100kb" }))
 
 // logging middleware
 app.use(httpLogger)
@@ -32,6 +49,6 @@ app.use(errorHandler)
 app.listen(PORT, () => {
   logger.info(`Server started successfully`, {
     port: PORT,
-    environment: process.env.NODE_ENV || "development",
+    environment: process.env.NODE_ENV,
   })
 })

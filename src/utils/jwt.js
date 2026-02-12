@@ -12,7 +12,8 @@ export const generateAccessToken = (id) => {
   }
 
   return jwt.sign(jwtPayload, process.env.ACCESS_TOKEN_SECRET, {
-    expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || "15m",
+    algorithm: "HS256",
+    expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN,
   })
 }
 
@@ -28,7 +29,8 @@ export const generateRefreshToken = (id) => {
   }
 
   return jwt.sign(jwtPayload, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || "7d",
+    algorithm: "HS256",
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN,
   })
 }
 
@@ -40,7 +42,7 @@ export const generateRefreshToken = (id) => {
  * @throws {Error} If verification fails (e.g., token expired, invalid signature, missing secret).
  */
 export const verifyAccessToken = (token) => {
-  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
+  return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, { algorithms: ["HS256"] })
 }
 
 /**
@@ -51,5 +53,5 @@ export const verifyAccessToken = (token) => {
  * @throws {Error} If verification fails (e.g., token expired, invalid signature, missing secret).
  */
 export const verifyRefreshToken = (token) => {
-  return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET)
+  return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET, { algorithms: ["HS256"] })
 }
