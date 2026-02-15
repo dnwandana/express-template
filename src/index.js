@@ -9,6 +9,7 @@ import { generalLimiter } from "./middlewares/rate-limit.js"
 import { httpLogger, requestLogger } from "./middlewares/logger.js"
 import logger from "./utils/logger.js"
 import validateEnv from "./utils/validate-env.js"
+import db from "./config/database.js"
 
 // validate environment variables before anything else
 validateEnv()
@@ -51,9 +52,32 @@ app.use(notFoundHandler)
 app.use(errorHandler)
 
 // start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   logger.info(`Server started successfully`, {
     port: PORT,
     environment: process.env.NODE_ENV,
   })
 })
+
+// graceful shutdown
+const gracefulShutdown = async (signal) => {
+  logger.info(`Received ${signal}, starting graceful shutdown`)
+  server.close(async () => {
+    logger.info("HTTP server closed")
+    try {
+      await db.destroy()
+      logger.info("Database connections closed")
+      process.exit(0)
+    } catch (err) {
+      logger.error("Error closing database connections", { error: err.message })
+      process.exit(1)
+    }
+  })
+  setTimeout(() => {
+    logger.error("Forced shutdown after timeout")
+    process.exit(1)
+  }, 10000)
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
+process.on("SIGINT", () => gracefulShutdown("SIGINT"))

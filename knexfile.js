@@ -4,6 +4,7 @@ const config = {
   client: "pg",
   connection: {
     connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : false,
   },
   useNullAsDefault: true,
   migrations: {
@@ -15,6 +16,8 @@ const config = {
   pool: {
     min: 2,
     max: 10,
+    acquireTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
   },
   // Database query logging
   log: {

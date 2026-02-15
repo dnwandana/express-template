@@ -2,6 +2,12 @@ import db from "../config/database.js"
 
 const TABLE_NAME = "todos"
 const TODO_COLUMNS = ["id", "title", "description", "is_completed", "created_at", "updated_at"]
+const SORTABLE_COLUMNS = ["created_at", "updated_at", "title", "is_completed"]
+
+const filterSortableColumns = (orders) => {
+  if (!orders) return null
+  return orders.filter((order) => SORTABLE_COLUMNS.includes(order.column))
+}
 
 export const create = (todo) => {
   return db.insert(todo).into(TABLE_NAME).returning(TODO_COLUMNS)
@@ -13,8 +19,9 @@ export const findOne = (conditions) => {
 
 export const findMany = (conditions, orders = null) => {
   let query = db.select(TODO_COLUMNS).from(TABLE_NAME).where(conditions)
-  if (orders) {
-    query = query.orderBy(orders)
+  const validOrders = filterSortableColumns(orders)
+  if (validOrders?.length > 0) {
+    query = query.orderBy(validOrders)
   }
   return query
 }
@@ -33,8 +40,9 @@ export const findManyPaginated = (conditions, options = {}) => {
     })
   }
 
-  if (orders) {
-    query = query.orderBy(orders)
+  const validOrders = filterSortableColumns(orders)
+  if (validOrders?.length > 0) {
+    query = query.orderBy(validOrders)
   }
 
   return query.limit(limit).offset(offset)

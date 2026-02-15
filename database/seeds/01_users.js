@@ -5,6 +5,8 @@ import { hashPassword } from "../../src/utils/argon2.js";
  * @returns { Promise<void> }
  */
 export const seed = async (knex) => {
+  if (process.env.NODE_ENV === "production") throw new Error("Seeding is not allowed in production")
+
   // prepare users
   // password is "secretpassword"
   const hashedPassword = await hashPassword("secretpassword");

@@ -15,6 +15,7 @@ export const up = (knex) => {
       .inTable("users")
       .onDelete("CASCADE");
     table.timestamps(true, true);
+    table.index("user_id");
   });
 };
 
