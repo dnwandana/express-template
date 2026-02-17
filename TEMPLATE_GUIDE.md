@@ -144,7 +144,7 @@ export const createTodo = async (req, res, next) => {
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
-        data: { todo },
+        data: todo,
       }),
     )
   } catch (error) {
@@ -363,7 +363,7 @@ import apiResponse from "../utils/response.js"
 res.json(
   apiResponse({
     message: "OK",
-    data: { todo: { id: 1, title: "Example" } },
+    data: { id: 1, title: "Example" },
   }),
 )
 
@@ -540,7 +540,7 @@ export const getCategories = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: { categories },
+        data: categories,
       }),
     )
   } catch (error) {
@@ -567,7 +567,7 @@ export const getCategory = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: { category },
+        data: category,
       }),
     )
   } catch (error) {
@@ -615,7 +615,7 @@ export const createCategory = async (req, res, next) => {
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
-        data: { category },
+        data: category,
       }),
     )
   } catch (error) {
@@ -657,7 +657,7 @@ export const updateCategory = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: { category },
+        data: category,
       }),
     )
   } catch (error) {
@@ -942,7 +942,7 @@ All errors follow this format:
 ```json
 {
   "message": "Error description",
-  "error": "Detailed error message"
+  "data": null
 }
 ```
 
@@ -978,7 +978,7 @@ import apiResponse from "../utils/response.js"
 res.json(
   apiResponse({
     message: "OK",
-    data: { todo: { id: 1, title: "Example" } },
+    data: { id: 1, title: "Example" },
   }),
 )
 
@@ -986,13 +986,36 @@ res.json(
 res.json(apiResponse({ message: "OK" }))
 ```
 
-**Response structure:**
+**Single resource response:**
 
 ```json
 {
-  "message": "Status message",
+  "message": "OK",
   "data": {
-    /* response data */
+    "id": 1,
+    "title": "Example"
+  }
+}
+```
+
+**Paginated response:**
+
+```json
+{
+  "message": "OK",
+  "data": [
+    { "id": 1, "title": "First" },
+    { "id": 2, "title": "Second" }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_items": 50,
+    "items_per_page": 10,
+    "has_next_page": true,
+    "has_previous_page": false,
+    "next_page": 2,
+    "previous_page": null
   }
 }
 ```

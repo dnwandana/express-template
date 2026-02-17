@@ -83,13 +83,14 @@ Search input is sanitized via `escapeIlike()` from `src/utils/sanitize.js` — e
 import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
 
 const params = validatePaginationQuery(req.query, ["updated_at", "title"])
-const { data, pagination } = await executePaginatedQuery(
+const { data: todos, pagination } = await executePaginatedQuery(
   model.count,
   model.findManyPaginated,
   { user_id: userId },
   params,
-  ["title"], // columns searched with ILIKE
+  ["title"],
 )
+return res.json(apiResponse({ data: todos, pagination }))
 ```
 
 **Model contract:** Models must expose `count(conditions, options)` and `findManyPaginated(conditions, options)` where options supports `{ search, searchColumns, limit, offset, orders }`. Search uses `ILIKE %term%` on specified columns.
@@ -105,7 +106,7 @@ DELETE `/api/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string. V
 - **File naming**: kebab-case (`http-error.js`, `validate-env.js`)
 - **UUIDs**: Use `crypto.randomUUID()` from `node:crypto` (not uuid package)
 - **Imports**: ES modules only. Models use named exports. Controllers imported as namespace (`import * as controller`)
-- **Responses**: Always use `apiResponse({ message, data })` from `src/utils/response.js`
+- **Responses**: Always use `apiResponse({ message, data, pagination })` from `src/utils/response.js`. Pass resource directly as `data` (object for single, array for list, `null` for delete/error). For paginated lists, pass the array as `data` and metadata as `pagination`.
 
 ## Environment Variables
 

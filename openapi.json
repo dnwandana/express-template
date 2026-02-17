@@ -396,8 +396,9 @@
           "message": {
             "type": "string"
           },
-          "error": {
-            "type": "string"
+          "data": {
+            "type": "object",
+            "nullable": true
           }
         },
         "required": ["message"]
@@ -500,30 +501,6 @@
           }
         },
         "required": ["title"]
-      },
-      "TodosListData": {
-        "type": "object",
-        "properties": {
-          "todos": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Todo"
-            }
-          },
-          "pagination": {
-            "$ref": "#/components/schemas/Pagination"
-          }
-        },
-        "required": ["todos", "pagination"]
-      },
-      "TodoSingleData": {
-        "type": "object",
-        "properties": {
-          "todo": {
-            "$ref": "#/components/schemas/Todo"
-          }
-        },
-        "required": ["todo"]
       },
       "UserData": {
         "type": "object",
@@ -706,19 +683,22 @@
         "content": {
           "application/json": {
             "schema": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/StandardResponse"
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
                 },
-                {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/TodosListData"
-                    }
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Todo"
                   }
+                },
+                "pagination": {
+                  "$ref": "#/components/schemas/Pagination"
                 }
-              ]
+              },
+              "required": ["message", "data", "pagination"]
             }
           }
         }
@@ -736,7 +716,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/TodoSingleData"
+                      "$ref": "#/components/schemas/Todo"
                     }
                   }
                 }
@@ -758,7 +738,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/TodoSingleData"
+                      "$ref": "#/components/schemas/Todo"
                     }
                   }
                 }
