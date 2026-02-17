@@ -84,10 +84,8 @@ export const getTodos = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: {
-          todos,
-          pagination,
-        },
+        data: todos,
+        pagination,
       }),
     )
   } catch (error) {
@@ -112,9 +110,7 @@ export const getTodo = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: {
-          todo: todo,
-        },
+        data: todo,
       }),
     )
   } catch (error) {
@@ -160,9 +156,7 @@ export const createTodo = async (req, res, next) => {
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.CREATED,
-        data: {
-          todo: todo,
-        },
+        data: todo,
       }),
     )
   } catch (error) {
@@ -207,9 +201,7 @@ export const updateTodo = async (req, res, next) => {
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
-        data: {
-          todo: todo,
-        },
+        data: todo,
       }),
     )
   } catch (error) {
