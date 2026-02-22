@@ -316,7 +316,9 @@ express-template/
 │   ├── error-YYYY-MM-DD.log   # Error logs
 │   └── combined-YYYY-MM-DD.log # All logs
 ├── .editorconfig              # Editor configuration
+├── .env.example               # Environment variable template
 ├── .nvmrc                     # Node.js version (24)
+├── LICENSE                    # MIT license
 ├── openapi.json               # OpenAPI 3.0 specification
 ├── knexfile.js                # Knex configuration
 ├── CLAUDE.md                  # AI assistant reference
