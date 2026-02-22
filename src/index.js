@@ -1,55 +1,15 @@
 import "dotenv/config"
-import express from "express"
-import cors from "cors"
-import helmet from "helmet"
-import hpp from "hpp"
-import routes from "./routes/index.js"
-import { errorHandler, notFoundHandler } from "./middlewares/error.js"
-import { generalLimiter } from "./middlewares/rate-limit.js"
-import { httpLogger, requestLogger } from "./middlewares/logger.js"
-import logger from "./utils/logger.js"
 import validateEnv from "./utils/validate-env.js"
-import db from "./config/database.js"
 
 // validate environment variables before anything else
 validateEnv()
 
-// initialize express app
-const app = express()
-app.set("trust proxy", 1)
+// import app after env validation so all process.env values are set
+const { default: app } = await import("./app.js")
+const { default: logger } = await import("./utils/logger.js")
+const { default: db } = await import("./config/database.js")
+
 const PORT = process.env.PORT
-
-// middlewares
-app.use(
-  helmet({
-    contentSecurityPolicy: { directives: { defaultSrc: ["'none'"] } },
-    referrerPolicy: { policy: "no-referrer" },
-  }),
-)
-app.use(
-  cors({
-    origin: process.env.CORS_ALLOWED_ORIGINS?.split(",").map((s) => s.trim()) || [
-      "http://localhost:8080",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "x-access-token", "x-refresh-token"],
-  }),
-)
-app.use(express.json({ limit: "100kb" }))
-app.use(express.urlencoded({ extended: true, limit: "100kb" }))
-app.use(hpp())
-app.use(generalLimiter)
-
-// logging middleware
-app.use(httpLogger)
-app.use(requestLogger)
-
-// routes
-app.use("/api", routes)
-
-// not found and error handler
-app.use(notFoundHandler)
-app.use(errorHandler)
 
 // start server
 const server = app.listen(PORT, () => {
