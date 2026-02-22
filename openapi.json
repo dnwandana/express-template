@@ -296,7 +296,9 @@
           },
           "username": {
             "type": "string",
-            "minLength": 5,
+            "minLength": 3,
+            "maxLength": 30,
+            "pattern": "^[a-zA-Z0-9._-]+$",
             "description": "Unique username"
           }
         },
@@ -408,8 +410,10 @@
         "properties": {
           "username": {
             "type": "string",
-            "minLength": 5,
-            "description": "Unique username (minimum 5 characters)"
+            "minLength": 3,
+            "maxLength": 30,
+            "pattern": "^[a-zA-Z0-9._-]+$",
+            "description": "Unique username (3-30 characters, alphanumeric and . _ - only)"
           },
           "password": {
             "type": "string",
@@ -429,7 +433,9 @@
         "properties": {
           "username": {
             "type": "string",
-            "minLength": 5
+            "minLength": 3,
+            "maxLength": 30,
+            "pattern": "^[a-zA-Z0-9._-]+$"
           },
           "password": {
             "type": "string",
@@ -758,7 +764,7 @@
               "validation": {
                 "summary": "Validation error",
                 "value": {
-                  "message": "\"username\" length must be at least 5 characters long"
+                  "message": "\"username\" length must be at least 3 characters long"
                 }
               },
               "duplicate": {
