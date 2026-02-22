@@ -5,7 +5,7 @@ import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
 import * as userModel from "../models/users.js"
 import { hashPassword, verifyPassword } from "../utils/argon2.js"
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js"
-import logger from "../utils/logger.js"
+import crypto from "node:crypto"
 
 // Pre-computed dummy hash for timing-safe signin.
 // Ensures verifyPassword always runs, even when the user doesn't exist,
@@ -72,16 +72,11 @@ export const signup = async (req, res, next) => {
 
     // create user
     const [user] = await userModel.create({
+      id: crypto.randomUUID(),
       username: username,
       password: hashedPassword,
       created_at: new Date(),
       updated_at: new Date(),
-    })
-
-    logger.info("User registered successfully", {
-      userId: user.id,
-      username: user.username,
-      ip: req.ip || req.connection.remoteAddress,
     })
 
     return res.status(HTTP_STATUS_CODE.CREATED).json(
@@ -94,11 +89,6 @@ export const signup = async (req, res, next) => {
       }),
     )
   } catch (error) {
-    logger.error("Signup error", {
-      error: error.message,
-      stack: error.stack,
-      ip: req.ip || req.connection.remoteAddress,
-    })
     return next(error)
   }
 }
@@ -127,12 +117,6 @@ export const signin = async (req, res, next) => {
     const accessToken = generateAccessToken(user.id)
     const refreshToken = generateRefreshToken(user.id)
 
-    logger.info("User signed in successfully", {
-      userId: user.id,
-      username: user.username,
-      ip: req.ip || req.connection.remoteAddress,
-    })
-
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
@@ -145,11 +129,6 @@ export const signin = async (req, res, next) => {
       }),
     )
   } catch (error) {
-    logger.error("Signin error", {
-      error: error.message,
-      stack: error.stack,
-      ip: req.ip || req.connection.remoteAddress,
-    })
     return next(error)
   }
 }
@@ -168,11 +147,6 @@ export const refreshAccessToken = async (req, res, next) => {
     // generate new access token
     const accessToken = generateAccessToken(userId)
 
-    logger.info("Access token refreshed successfully", {
-      userId: userId,
-      ip: req.ip || req.connection.remoteAddress,
-    })
-
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
@@ -182,11 +156,6 @@ export const refreshAccessToken = async (req, res, next) => {
       }),
     )
   } catch (error) {
-    logger.error("Refresh access token error", {
-      error: error.message,
-      stack: error.stack,
-      ip: req.ip || req.connection.remoteAddress,
-    })
     return next(error)
   }
 }

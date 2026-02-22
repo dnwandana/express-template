@@ -4,7 +4,6 @@ import apiResponse from "../utils/response.js"
 import { HTTP_STATUS_CODE, HTTP_STATUS_MESSAGE } from "../utils/constant.js"
 import * as todoModel from "../models/todos.js"
 import crypto from "node:crypto"
-import logger from "../utils/logger.js"
 import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
 
 const todoIdParamSchema = joi.object({
@@ -89,11 +88,6 @@ export const getTodos = async (req, res, next) => {
       }),
     )
   } catch (error) {
-    logger.error("Get todos error", {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?.id,
-    })
     return next(error)
   }
 }
@@ -106,6 +100,9 @@ export const getTodo = async (req, res, next) => {
 
     // get todo
     const todo = await todoModel.findOne({ id: todoId, user_id: userId })
+    if (!todo) {
+      throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "todo not found")
+    }
 
     return res.json(
       apiResponse({
@@ -114,12 +111,6 @@ export const getTodo = async (req, res, next) => {
       }),
     )
   } catch (error) {
-    logger.error("Get todo error", {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?.id,
-      todoId: req.todoId,
-    })
     return next(error)
   }
 }
@@ -137,21 +128,17 @@ export const createTodo = async (req, res, next) => {
     const { title, description, is_completed } = value
 
     // create todo
-    const [todo] = await todoModel.create({
+    const todoData = {
       id: crypto.randomUUID(),
       user_id: userId,
-      title: title,
-      description: description,
-      is_completed: is_completed,
+      title,
       created_at: new Date(),
       updated_at: new Date(),
-    })
+    }
+    if (description !== undefined) todoData.description = description
+    if (is_completed !== undefined) todoData.is_completed = is_completed
 
-    logger.info("Todo created successfully", {
-      todoId: todo.id,
-      userId: userId,
-      title: title,
-    })
+    const [todo] = await todoModel.create(todoData)
 
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
@@ -160,11 +147,6 @@ export const createTodo = async (req, res, next) => {
       }),
     )
   } catch (error) {
-    logger.error("Create todo error", {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?.id,
-    })
     return next(error)
   }
 }
@@ -183,20 +165,14 @@ export const updateTodo = async (req, res, next) => {
     const { title, description, is_completed } = value
 
     // update todo
-    const [todo] = await todoModel.update(
-      { id: todoId, user_id: userId },
-      {
-        title: title,
-        description: description,
-        is_completed: is_completed,
-        updated_at: new Date(),
-      },
-    )
+    const updateData = { title, updated_at: new Date() }
+    if (description !== undefined) updateData.description = description
+    if (is_completed !== undefined) updateData.is_completed = is_completed
 
-    logger.info("Todo updated successfully", {
-      todoId: todoId,
-      userId: userId,
-    })
+    const [todo] = await todoModel.update({ id: todoId, user_id: userId }, updateData)
+    if (!todo) {
+      throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "todo not found")
+    }
 
     return res.json(
       apiResponse({
@@ -205,12 +181,6 @@ export const updateTodo = async (req, res, next) => {
       }),
     )
   } catch (error) {
-    logger.error("Update todo error", {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?.id,
-      todoId: req.todoId,
-    })
     return next(error)
   }
 }
@@ -224,23 +194,13 @@ export const deleteTodo = async (req, res, next) => {
     // delete todo
     await todoModel.remove({ id: todoId, user_id: userId })
 
-    logger.info("Todo deleted successfully", {
-      todoId: todoId,
-      userId: userId,
-    })
-
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
+        data: null,
       }),
     )
   } catch (error) {
-    logger.error("Delete todo error", {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?.id,
-      todoId: req.todoId,
-    })
     return next(error)
   }
 }
@@ -259,22 +219,13 @@ export const deleteTodos = async (req, res, next) => {
     // delete todos
     await todoModel.removeMany(todoIds, { user_id: userId })
 
-    logger.info("Multiple todos deleted successfully", {
-      count: todoIds.length,
-      userId: userId,
-    })
-
     return res.json(
       apiResponse({
         message: HTTP_STATUS_MESSAGE.OK,
+        data: null,
       }),
     )
   } catch (error) {
-    logger.error("Delete multiple todos error", {
-      error: error.message,
-      stack: error.stack,
-      userId: req.user?.id,
-    })
     return next(error)
   }
 }
