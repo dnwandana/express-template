@@ -118,7 +118,7 @@ Optional with defaults: `NODE_ENV` (development), `PORT` (3000), `ACCESS_TOKEN_E
 
 - **Config**: `knexfile.js` — connection pool min 2, max 10
 - **Migrations**: `database/migrations/` — format `YYYYMMDDHHMMSS_name.js`
-- **Seeds**: `database/seeds/` — 5 test users (password: "secretpassword"), 35+ todos
+- **Seeds**: `database/seeds/` — 5 test users (password: "secretpassword"), 750 todos (150 per user)
 - Tables use `timestamps(true, true)` for timezone-aware created_at/updated_at
 - Todos foreign key to users with CASCADE delete
 
