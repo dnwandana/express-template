@@ -11,6 +11,9 @@ Express.js RESTful API template using PostgreSQL, Knex.js, and JWT authenticatio
 ```bash
 npm run dev              # Development server with nodemon
 npm start                # Production server
+npm test                 # Run tests (Vitest)
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Run tests with coverage
 npm run lint             # Oxlint (linter)
 npm run lint:fix         # Auto-fix lint issues
 npm run format           # Prettier check
@@ -32,18 +35,32 @@ No pre-commit hooks. Run `npm run lint:fix && npm run format:fix` before committ
 - **Controllers** (`src/controllers/`): Business logic, Joi validation, coordinates models
 - **Routes** (`src/routes/`): Route definitions + param validation middleware, aggregated in `routes/index.js`
 
-### Middleware Order (critical — in `src/index.js`)
+### Middleware Order (critical — in `src/app.js`)
 
-1. Security (helmet with strict CSP, cors with explicit origins)
-2. Body parsing (express.json + express.urlencoded, both 100kb limit)
-3. HPP (HTTP Parameter Pollution protection)
-4. Rate limiting (generalLimiter — global, configurable via `RATE_LIMIT_GENERAL_MAX`)
-5. Logging (Morgan httpLogger + custom requestLogger)
-6. Routes (`/api`) — auth routes have additional `authLimiter`
-7. 404 handler (notFoundHandler)
-8. Error handler (errorHandler) — **must be last**
+1. Request ID (`requestId` — must be first so all downstream middleware can use `req.id`)
+2. Security (helmet with strict CSP, cors with explicit origins)
+3. Body parsing (express.json + express.urlencoded, both 100kb limit)
+4. HPP (HTTP Parameter Pollution protection)
+5. Health check (`/health` — before rate limiting so load balancers aren't throttled)
+6. Rate limiting (generalLimiter — global, configurable via `RATE_LIMIT_GENERAL_MAX`)
+7. Logging (Morgan httpLogger + custom requestLogger)
+8. Routes (`/api`) — auth routes have additional `authLimiter`
+9. 404 handler (notFoundHandler)
+10. Error handler (errorHandler) — **must be last**
 
 `trust proxy` is set to `1` so rate limiting works correctly behind reverse proxies.
+
+### App Extraction (`src/app.js` vs `src/index.js`)
+
+`src/app.js` configures Express (middleware, routes) and exports the app without calling `listen()`. `src/index.js` is the thin entry point: loads env, validates it, dynamically imports `app.js`, then starts the server. This split enables Supertest to import the app directly without binding to a port.
+
+### Request ID Tracking
+
+`src/middlewares/request-id.js` runs first in the middleware chain. Accepts an incoming `X-Request-Id` header (up to 128 chars) or generates a UUID via `crypto.randomUUID()`. Stores on `req.id`, echoes in the response `X-Request-Id` header. All logs (Morgan, requestLogger, errorHandler, notFoundHandler) include `requestId: req.id`.
+
+### Health Check
+
+`GET /health` — mounted before rate limiting so load balancers aren't throttled. Returns DB connectivity status (`SELECT 1`), uptime, and timestamp. Uses `apiResponse()` wrapper. Returns 200 when healthy, 503 when DB is unreachable.
 
 ### Request Context Flow
 
@@ -61,7 +78,7 @@ Validation: username 3–30 chars, alphanumeric + `.` `_` `-` only. Password 8�
 
 ### Error Handling
 
-Controllers throw `HttpError(status, message)` → caught by `next(error)` → centralized `errorHandler` logs full context (stack, IP, userId, method, URL) but only returns `{ message }` to client. `notFoundHandler` logs 404s with user-agent tracking.
+Controllers throw `HttpError(status, message)` → caught by `next(error)` → centralized `errorHandler` logs full context (requestId, stack, IP, userId, method, URL) but only returns `{ message }` to client. Controllers should **not** log errors themselves — the centralized handler is the single logging point. Stack traces are only logged outside production. `notFoundHandler` logs 404s with user-agent tracking.
 
 ### Environment Validation
 
@@ -130,3 +147,14 @@ Optional with defaults: `NODE_ENV` (development), `PORT` (3000), `ACCESS_TOKEN_E
 4. Routes: `src/routes/<resource>.js` — register in `src/routes/index.js`
 
 See `TEMPLATE_GUIDE.md` for detailed walkthrough.
+
+## Testing
+
+- **Runner**: Vitest with `globals: true` (no explicit `describe`/`it` imports needed)
+- **HTTP**: Supertest for integration tests against the Express app
+- **Database**: Real PostgreSQL test database (`express_template_test` on same cluster, configured in `.env.test`)
+- **Config**: `vitest.config.js` — `fileParallelism: false` (integration tests share DB state)
+- **Setup**: `tests/global-setup.js` — loads `.env.test`, validates env, runs migrations, truncates tables; returns teardown function that rolls back and destroys connection
+- **Helpers**: `tests/helpers.js` — `getApp()`, `request()`, `createTestUser()`, `getAuthHeaders()`, `cleanTable()`, `cleanAllTables()`
+- **Structure**: `tests/unit/` for pure logic, `tests/integration/` for HTTP endpoints
+- **Convention**: Each integration test file calls `cleanAllTables()` in `afterEach` to ensure test isolation

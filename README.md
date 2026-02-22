@@ -24,13 +24,19 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 - **MVC Pattern**: Clean separation of concerns (Models, Controllers, Routes)
 - **ES Modules**: Modern JavaScript with `import/export` syntax
 
+### Observability & Reliability
+
+- **Request ID Tracking**: Automatic `X-Request-Id` correlation across logs and responses (accepts incoming or generates UUID)
+- **Health Check**: `GET /health` endpoint with database connectivity probe, exempt from rate limiting
+- **Logging**: Winston + Morgan for structured logging with daily rotation, request IDs in every log entry
+
 ### Developer Experience
 
 - **Standardized Responses**: Consistent API response format
 - **Error Handling**: Centralized error handling middleware
+- **Testing**: Vitest + Supertest with real PostgreSQL test database, unit and integration tests
 - **OpenAPI Spec**: API documentation included (`openapi.json`)
 - **Environment Config**: dotenv for environment-specific settings
-- **Logging**: Winston + Morgan for structured logging with daily rotation
 - **Code Quality**: Oxlint for fast linting, Prettier for consistent formatting
 
 ## Tech Stack
@@ -46,6 +52,7 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 | **Security**       | Helmet ^8.1.0, CORS ^2.8.5, HPP ^0.2.3 | Security middleware        |
 | **Rate Limiting**  | express-rate-limit ^8.2.1              | Request throttling         |
 | **Logging**        | Winston ^3.19.0, Morgan ^1.10.1        | Structured logging         |
+| **Testing**        | Vitest ^4.0.18, Supertest ^7.2.2       | Test runner & HTTP testing |
 | **Code Quality**   | Oxlint ^1.41.0, Prettier ^3.8.1        | Linting and formatting     |
 
 ## Prerequisites
@@ -214,6 +221,16 @@ npm run dev      # Start development server with nodemon
 npm start        # Start production server
 ```
 
+### Testing
+
+```bash
+npm test             # Run all tests
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
+```
+
+Tests use a real PostgreSQL test database configured in `.env.test`. The global setup runs migrations and truncates tables before tests, then rolls back migrations on teardown.
+
 ### Linting & Formatting
 
 ```bash
@@ -243,6 +260,12 @@ npm run seed:make <name>   # Create a new seed file
 ## API Documentation
 
 This template includes an OpenAPI 3.0 specification (`openapi.json`) that documents all API endpoints.
+
+### Health Check
+
+| Method | Endpoint  | Description                             | Auth Required |
+| ------ | --------- | --------------------------------------- | ------------- |
+| GET    | `/health` | Health check with database connectivity | No            |
 
 ### Authentication Endpoints
 
@@ -290,13 +313,15 @@ express-template/
 │   │   ├── authorization.js  # JWT verification
 │   │   ├── error.js          # Error handling & 404 handler
 │   │   ├── logger.js         # HTTP request logging
-│   │   └── rate-limit.js     # Rate limiting (auth + general)
+│   │   ├── rate-limit.js     # Rate limiting (auth + general)
+│   │   └── request-id.js     # X-Request-Id correlation tracking
 │   ├── models/              # Data access layer
 │   │   ├── users.js
 │   │   └── todos.js
 │   ├── routes/              # API route definitions
 │   │   ├── index.js          # Route aggregator
 │   │   ├── authentication.js
+│   │   ├── health.js          # Health check endpoint
 │   │   └── todos.js
 │   ├── utils/               # Utility functions
 │   │   ├── argon2.js         # Password hashing
@@ -308,13 +333,19 @@ express-template/
 │   │   ├── response.js       # Response formatter
 │   │   ├── sanitize.js       # Input sanitization (ILIKE escaping)
 │   │   └── validate-env.js   # Startup environment validation
-│   └── index.js              # Application entry point
+│   ├── app.js                # Express app configuration (middleware + routes)
+│   └── index.js              # Entry point (env validation + server start)
 ├── database/
 │   ├── migrations/          # Database migration files
 │   └── seeds/               # Database seed files
 ├── logs/                    # Application logs (created at runtime)
 │   ├── error-YYYY-MM-DD.log   # Error logs
 │   └── combined-YYYY-MM-DD.log # All logs
+├── tests/                   # Test suite
+│   ├── unit/                  # Unit tests (pure logic)
+│   ├── integration/           # Integration tests (HTTP endpoints)
+│   ├── helpers.js             # Test utilities
+│   └── global-setup.js        # DB setup/teardown
 ├── .editorconfig              # Editor configuration
 ├── .env.example               # Environment variable template
 ├── .nvmrc                     # Node.js version (24)
@@ -323,6 +354,7 @@ express-template/
 ├── knexfile.js                # Knex configuration
 ├── CLAUDE.md                  # AI assistant reference
 ├── TEMPLATE_GUIDE.md          # Guide for extending this template
+├── vitest.config.js           # Vitest test configuration
 └── package.json
 ```
 
