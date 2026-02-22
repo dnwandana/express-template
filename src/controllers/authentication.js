@@ -24,6 +24,7 @@ const signupSchema = joi
         "string.pattern.base":
           "username must contain only letters, numbers, dots, underscores, or hyphens",
       }),
+    email: joi.string().email().max(255).optional(),
     password: joi.string().min(8).max(72).required(),
     confirmation_password: joi.string().required().valid(joi.ref("password")).messages({
       "any.only": "confirmation_password must match password",
@@ -56,9 +57,9 @@ export const signup = async (req, res, next) => {
     }
 
     // request values
-    const { username, password } = value
+    const { username, email, password } = value
 
-    // check if user already exists
+    // check if user already exists by username
     const existingUser = await userModel.findOne({ username })
     if (existingUser) {
       throw new HttpError(
@@ -67,17 +68,32 @@ export const signup = async (req, res, next) => {
       )
     }
 
+    // check for duplicate email if provided
+    if (email) {
+      const existingEmail = await userModel.findOne({ email })
+      if (existingEmail) {
+        throw new HttpError(
+          HTTP_STATUS_CODE.BAD_REQUEST,
+          "user with the given email already exists",
+        )
+      }
+    }
+
     // hash password
     const hashedPassword = await hashPassword(password)
 
-    // create user
-    const [user] = await userModel.create({
+    // build user data — include email only if provided
+    const userData = {
       id: crypto.randomUUID(),
-      username: username,
+      username,
       password: hashedPassword,
       created_at: new Date(),
       updated_at: new Date(),
-    })
+    }
+    if (email) userData.email = email
+
+    // create user
+    const [user] = await userModel.create(userData)
 
     return res.status(HTTP_STATUS_CODE.CREATED).json(
       apiResponse({
@@ -85,6 +101,7 @@ export const signup = async (req, res, next) => {
         data: {
           id: user.id,
           username: user.username,
+          email: user.email ?? null,
         },
       }),
     )
