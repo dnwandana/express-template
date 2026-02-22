@@ -20,11 +20,12 @@ export const errorHandler = (err, req, res, _next) => {
 
   // Log error details (stack only outside production)
   const logPayload = {
+    requestId: req.id,
     message: err.message,
     status: err.status || HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
     method: req.method,
     url: req.url,
-    ip: req.ip || req.connection.remoteAddress,
+    ip: req.ip,
     userId: req.user?.id,
   }
   if (!isProduction) {
@@ -58,9 +59,10 @@ export const errorHandler = (err, req, res, _next) => {
 export const notFoundHandler = (req, res, _next) => {
   // Log 404 errors
   logger.warn("Route not found", {
+    requestId: req.id,
     method: req.method,
     url: req.url,
-    ip: req.ip || req.connection.remoteAddress,
+    ip: req.ip,
     userAgent: req.get("user-agent"),
   })
 

@@ -1,10 +1,16 @@
 import logger from "../utils/logger.js"
 import morgan from "morgan"
 
+// Register custom Morgan token for request ID
+morgan.token("request-id", (req) => req.id)
+
 // Use Morgan for HTTP request logging with our logger stream
-const httpLogger = morgan(":method :url :status :res[content-length] - :response-time ms", {
-  stream: logger.stream,
-})
+const httpLogger = morgan(
+  ":request-id :method :url :status :res[content-length] - :response-time ms",
+  {
+    stream: logger.stream,
+  },
+)
 
 // Custom request logging middleware for detailed information
 const requestLogger = (req, res, next) => {
@@ -12,9 +18,10 @@ const requestLogger = (req, res, next) => {
 
   // Log incoming request details
   logger.http("Incoming request", {
+    requestId: req.id,
     method: req.method,
     url: req.url,
-    ip: req.ip || req.connection.remoteAddress,
+    ip: req.ip,
     userAgent: req.get("user-agent"),
   })
 
@@ -26,6 +33,7 @@ const requestLogger = (req, res, next) => {
     const duration = Date.now() - startTime
 
     logger.http("Outgoing response", {
+      requestId: req.id,
       method: req.method,
       url: req.url,
       status: res.statusCode,
