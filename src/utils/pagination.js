@@ -43,6 +43,16 @@ export const buildPaginationMeta = (page, limit, totalItems) => {
   const hasNextPage = page < totalPages
   const hasPreviousPage = page > 1
 
+  let nextPage = null
+  if (hasNextPage) {
+    nextPage = page + 1
+  }
+
+  let previousPage = null
+  if (hasPreviousPage) {
+    previousPage = page - 1
+  }
+
   return {
     current_page: page,
     total_pages: totalPages,
@@ -50,8 +60,8 @@ export const buildPaginationMeta = (page, limit, totalItems) => {
     items_per_page: limit,
     has_next_page: hasNextPage,
     has_previous_page: hasPreviousPage,
-    next_page: hasNextPage ? page + 1 : null,
-    previous_page: hasPreviousPage ? page - 1 : null,
+    next_page: nextPage,
+    previous_page: previousPage,
   }
 }
 
@@ -75,7 +85,10 @@ export const executePaginatedQuery = async (
   const { page, limit, sort_by, sort_order, search } = params
   const offset = (page - 1) * limit
 
-  const sanitizedSearch = search ? escapeIlike(search) : ""
+  let sanitizedSearch = ""
+  if (search) {
+    sanitizedSearch = escapeIlike(search)
+  }
 
   let searchOptions = {}
   if (sanitizedSearch && searchableColumns.length) {

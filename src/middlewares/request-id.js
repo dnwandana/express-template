@@ -16,7 +16,10 @@ const MAX_REQUEST_ID_LENGTH = 128
  */
 export const requestId = (req, res, next) => {
   const incoming = req.headers[REQUEST_ID_HEADER]
-  const id = incoming && incoming.length <= MAX_REQUEST_ID_LENGTH ? incoming : crypto.randomUUID()
+  let id = crypto.randomUUID()
+  if (incoming && incoming.length <= MAX_REQUEST_ID_LENGTH) {
+    id = incoming
+  }
   req.id = id
   res.setHeader(REQUEST_ID_HEADER, id)
   next()

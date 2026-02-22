@@ -36,11 +36,17 @@ const createRotateTransport = (filename, level) => {
   })
 }
 
+// Use structured JSON in production, colorized output in development
+let consoleTransportFormat = consoleFormat
+if (process.env.NODE_ENV === "production") {
+  consoleTransportFormat = logFormat
+}
+
 // Define transports
 const transports = [
   // Console transport for development
   new winston.transports.Console({
-    format: process.env.NODE_ENV === "production" ? logFormat : consoleFormat,
+    format: consoleTransportFormat,
   }),
 
   // Error log file
