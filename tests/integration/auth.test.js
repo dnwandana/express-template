@@ -66,6 +66,39 @@ describe("POST /api/auth/signup", () => {
     expect(res.status).toBe(400)
     expect(res.body.message).toContain("confirmation_password")
   })
+
+  it("should accept optional email on signup", async () => {
+    const res = await (await request()).post("/api/auth/signup").send({
+      username: "emailuser",
+      email: "emailuser@test.com",
+      password: "password123",
+      confirmation_password: "password123",
+    })
+
+    expect(res.status).toBe(201)
+    expect(res.body.data.username).toBe("emailuser")
+    expect(res.body.data.email).toBe("emailuser@test.com")
+  })
+
+  it("should reject duplicate email", async () => {
+    const agent = await request()
+    await agent.post("/api/auth/signup").send({
+      username: "emailuser1",
+      email: "same@test.com",
+      password: "password123",
+      confirmation_password: "password123",
+    })
+
+    const res = await agent.post("/api/auth/signup").send({
+      username: "emailuser2",
+      email: "same@test.com",
+      password: "password123",
+      confirmation_password: "password123",
+    })
+
+    expect(res.status).toBe(400)
+    expect(res.body.message).toContain("email")
+  })
 })
 
 describe("POST /api/auth/signin", () => {

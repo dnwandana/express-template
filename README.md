@@ -1,6 +1,6 @@
 # Express API Template
 
-A production-ready RESTful API template built with Express.js, featuring PostgreSQL database, JWT authentication, and a clean MVC architecture. Designed to jumpstart your next Node.js API project.
+A production-ready RESTful API template built with Express.js, featuring PostgreSQL, JWT authentication, and a multi-tenant architecture with organization-based access control. Designed to jumpstart your next Node.js API project.
 
 ## Features
 
@@ -17,9 +17,17 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 - **Body Size Limits**: 100kb cap on JSON and URL-encoded payloads
 - **Pagination & Search**: Reusable utility for paginated queries with sorting and case-insensitive search
 
+### Multi-Tenant Architecture
+
+- **Organization hierarchy**: Organization → Project → Todos with shared database tenant isolation via `org_id` and `project_id` columns
+- **Flexible membership**: Users can belong to multiple organizations and multiple projects (GitHub-style model)
+- **Custom RBAC**: 4 built-in system roles (owner, admin, member, viewer) plus custom roles with granular permission assignment
+- **16 system permissions**: covering org management, project management, invitation management, and todo operations
+- **Invitation system**: Invite by username or email, 7-day token expiry, accept/decline flow; project invitations auto-add the user to the org as viewer if not already a member
+
 ### Database & Architecture
 
-- **PostgreSQL**: Robust relational database
+- **PostgreSQL**: Robust relational database (10 tables)
 - **Knex.js**: SQL query builder with migration support
 - **MVC Pattern**: Clean separation of concerns (Models, Controllers, Routes)
 - **ES Modules**: Modern JavaScript with `import/export` syntax
@@ -34,7 +42,7 @@ A production-ready RESTful API template built with Express.js, featuring Postgre
 
 - **Standardized Responses**: Consistent API response format
 - **Error Handling**: Centralized error handling middleware
-- **Testing**: Vitest + Supertest with real PostgreSQL test database, unit and integration tests
+- **Testing**: Vitest + Supertest with real PostgreSQL test database, 64 tests across 8 test files
 - **OpenAPI Spec**: API documentation included (`openapi.json`)
 - **Environment Config**: dotenv for environment-specific settings
 - **Code Quality**: Oxlint for fast linting, Prettier for consistent formatting
@@ -173,7 +181,7 @@ This template includes a reusable pagination utility (`src/utils/pagination.js`)
 ### Example Request
 
 ```
-GET /api/todos?page=1&limit=20&sort_by=title&sort_order=asc&search=groceries
+GET /api/orgs/:org_id/projects/:project_id/todos?page=1&limit=20&sort_by=title&sort_order=asc&search=groceries
 ```
 
 ### Response Format
@@ -206,7 +214,7 @@ const params = validatePaginationQuery(req.query, ["updated_at", "name"])
 const { data, pagination } = await executePaginatedQuery(
   model.count,
   model.findManyPaginated,
-  { user_id: userId },
+  { org_id: orgId, project_id: projectId },
   params,
   ["name"], // searchable columns
 )
@@ -224,12 +232,12 @@ npm start        # Start production server
 ### Testing
 
 ```bash
-npm test             # Run all tests
-npm run test:watch   # Run tests in watch mode
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
 npm run test:coverage # Run tests with coverage report
 ```
 
-Tests use a real PostgreSQL test database configured in `.env.test`. The global setup runs migrations and truncates tables before tests, then rolls back migrations on teardown.
+Tests use a real PostgreSQL test database configured in `.env.test`. The global setup runs migrations and truncates tables before tests, then rolls back migrations on teardown. Tests cover auth, health, todos (multi-tenant paths), organizations, permissions enforcement, cross-tenant isolation, and cascade deletes.
 
 ### Linting & Formatting
 
@@ -257,6 +265,8 @@ npm run seed               # Run all seed files
 npm run seed:make <name>   # Create a new seed file
 ```
 
+Seeds are for development only and populate: permissions, users (5), organizations (2), system roles per org, role_permissions, org_members, projects, project_members, and todos.
+
 ## API Documentation
 
 This template includes an OpenAPI 3.0 specification (`openapi.json`) that documents all API endpoints.
@@ -275,16 +285,80 @@ This template includes an OpenAPI 3.0 specification (`openapi.json`) that docume
 | POST   | `/api/auth/signin`  | Sign in and receive tokens | No            |
 | POST   | `/api/auth/refresh` | Refresh access token       | Refresh Token |
 
-### Todo Endpoints (Example)
+### Organization Endpoints
 
-| Method | Endpoint              | Description                           | Auth Required |
-| ------ | --------------------- | ------------------------------------- | ------------- |
-| GET    | `/api/todos`          | Get all todos (paginated, searchable) | Access Token  |
-| POST   | `/api/todos`          | Create a new todo                     | Access Token  |
-| GET    | `/api/todos/:todo_id` | Get single todo                       | Access Token  |
-| PUT    | `/api/todos/:todo_id` | Update a todo                         | Access Token  |
-| DELETE | `/api/todos/:todo_id` | Delete a todo                         | Access Token  |
-| DELETE | `/api/todos?ids=...`  | Delete multiple todos                 | Access Token  |
+| Method | Endpoint            | Description      | Auth Required |
+| ------ | ------------------- | ---------------- | ------------- |
+| POST   | `/api/orgs`         | Create org       | Access Token  |
+| GET    | `/api/orgs`         | List user's orgs | Access Token  |
+| GET    | `/api/orgs/:org_id` | Get org details  | Access Token  |
+| PUT    | `/api/orgs/:org_id` | Update org       | Access Token  |
+| DELETE | `/api/orgs/:org_id` | Delete org       | Access Token  |
+
+### Project Endpoints (nested under org)
+
+| Method | Endpoint                                 | Description    | Auth Required |
+| ------ | ---------------------------------------- | -------------- | ------------- |
+| POST   | `/api/orgs/:org_id/projects`             | Create project | Access Token  |
+| GET    | `/api/orgs/:org_id/projects`             | List projects  | Access Token  |
+| GET    | `/api/orgs/:org_id/projects/:project_id` | Get project    | Access Token  |
+| PUT    | `/api/orgs/:org_id/projects/:project_id` | Update project | Access Token  |
+| DELETE | `/api/orgs/:org_id/projects/:project_id` | Delete project | Access Token  |
+
+### Todo Endpoints (nested under project)
+
+| Method | Endpoint                                                | Description                        | Auth Required |
+| ------ | ------------------------------------------------------- | ---------------------------------- | ------------- |
+| POST   | `/api/orgs/:org_id/projects/:project_id/todos`          | Create todo                        | Access Token  |
+| GET    | `/api/orgs/:org_id/projects/:project_id/todos`          | List todos (paginated, searchable) | Access Token  |
+| GET    | `/api/orgs/:org_id/projects/:project_id/todos/:todo_id` | Get todo                           | Access Token  |
+| PUT    | `/api/orgs/:org_id/projects/:project_id/todos/:todo_id` | Update todo                        | Access Token  |
+| DELETE | `/api/orgs/:org_id/projects/:project_id/todos/:todo_id` | Delete todo                        | Access Token  |
+| DELETE | `/api/orgs/:org_id/projects/:project_id/todos?ids=...`  | Bulk delete todos                  | Access Token  |
+
+### Role Endpoints (nested under org)
+
+| Method | Endpoint                           | Description        | Auth Required |
+| ------ | ---------------------------------- | ------------------ | ------------- |
+| POST   | `/api/orgs/:org_id/roles`          | Create custom role | Access Token  |
+| GET    | `/api/orgs/:org_id/roles`          | List roles         | Access Token  |
+| GET    | `/api/orgs/:org_id/roles/:role_id` | Get role details   | Access Token  |
+| PUT    | `/api/orgs/:org_id/roles/:role_id` | Update role        | Access Token  |
+| DELETE | `/api/orgs/:org_id/roles/:role_id` | Delete custom role | Access Token  |
+
+### Organization Member Endpoints
+
+| Method | Endpoint                             | Description        | Auth Required |
+| ------ | ------------------------------------ | ------------------ | ------------- |
+| GET    | `/api/orgs/:org_id/members`          | List org members   | Access Token  |
+| PUT    | `/api/orgs/:org_id/members/:user_id` | Update member role | Access Token  |
+| DELETE | `/api/orgs/:org_id/members/:user_id` | Remove member      | Access Token  |
+
+### Project Member Endpoints
+
+| Method | Endpoint                                                  | Description          | Auth Required |
+| ------ | --------------------------------------------------------- | -------------------- | ------------- |
+| GET    | `/api/orgs/:org_id/projects/:project_id/members`          | List project members | Access Token  |
+| PUT    | `/api/orgs/:org_id/projects/:project_id/members/:user_id` | Update member role   | Access Token  |
+| DELETE | `/api/orgs/:org_id/projects/:project_id/members/:user_id` | Remove member        | Access Token  |
+
+### Invitation Endpoints
+
+| Method | Endpoint                                             | Description                 | Auth Required |
+| ------ | ---------------------------------------------------- | --------------------------- | ------------- |
+| POST   | `/api/orgs/:org_id/invitations`                      | Create org invitation       | Access Token  |
+| GET    | `/api/orgs/:org_id/invitations`                      | List org invitations        | Access Token  |
+| DELETE | `/api/orgs/:org_id/invitations/:invitation_id`       | Revoke invitation           | Access Token  |
+| POST   | `/api/orgs/:org_id/projects/:project_id/invitations` | Create project invitation   | Access Token  |
+| GET    | `/api/invitations`                                   | List my pending invitations | Access Token  |
+| POST   | `/api/invitations/:invitation_id/accept`             | Accept invitation           | Access Token  |
+| POST   | `/api/invitations/:invitation_id/decline`            | Decline invitation          | Access Token  |
+
+### Permissions Endpoint
+
+| Method | Endpoint           | Description                 | Auth Required |
+| ------ | ------------------ | --------------------------- | ------------- |
+| GET    | `/api/permissions` | List all system permissions | Access Token  |
 
 ### Authentication Format
 
@@ -300,6 +374,29 @@ Token refresh requires the refresh token in the `x-refresh-token` header:
 x-refresh-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
+## System Roles & Permissions
+
+There are 4 built-in system roles per organization. Custom roles can be created with any combination of the 16 system permissions.
+
+| Permission               | Owner | Admin | Member | Viewer |
+| ------------------------ | ----- | ----- | ------ | ------ |
+| `org:read`               | Yes   | Yes   | Yes    | Yes    |
+| `org:update`             | Yes   | Yes   |        |        |
+| `org:delete`             | Yes   |       |        |        |
+| `org:manage_members`     | Yes   | Yes   |        |        |
+| `org:manage_roles`       | Yes   |       |        |        |
+| `project:create`         | Yes   | Yes   |        |        |
+| `project:read`           | Yes   | Yes   | Yes    | Yes    |
+| `project:update`         | Yes   | Yes   |        |        |
+| `project:delete`         | Yes   | Yes   |        |        |
+| `project:manage_members` | Yes   | Yes   |        |        |
+| `invitations:create`     | Yes   | Yes   |        |        |
+| `invitations:manage`     | Yes   | Yes   |        |        |
+| `todos:create`           | Yes   | Yes   | Yes    |        |
+| `todos:read`             | Yes   | Yes   | Yes    | Yes    |
+| `todos:update`           | Yes   | Yes   | Yes    |        |
+| `todos:delete`           | Yes   | Yes   | Yes    |        |
+
 ## Project Structure
 
 ```
@@ -308,21 +405,46 @@ express-template/
 │   ├── config/              # Configuration files (Knex)
 │   ├── controllers/         # Business logic layer
 │   │   ├── authentication.js
+│   │   ├── invitations.js
+│   │   ├── members.js        # Shared org/project member management
+│   │   ├── organizations.js
+│   │   ├── permissions.js
+│   │   ├── projects.js
+│   │   ├── roles.js
 │   │   └── todos.js
 │   ├── middlewares/         # Express middleware
 │   │   ├── authorization.js  # JWT verification
 │   │   ├── error.js          # Error handling & 404 handler
 │   │   ├── logger.js         # HTTP request logging
 │   │   ├── rate-limit.js     # Rate limiting (auth + general)
-│   │   └── request-id.js     # X-Request-Id correlation tracking
+│   │   ├── request-id.js     # X-Request-Id correlation tracking
+│   │   ├── require-permission.js # Permission gate
+│   │   ├── resolve-org.js    # Resolves org, verifies membership, loads permissions
+│   │   └── resolve-project.js # Resolves project, merges permissions
 │   ├── models/              # Data access layer
-│   │   ├── users.js
-│   │   └── todos.js
+│   │   ├── invitations.js
+│   │   ├── org-members.js
+│   │   ├── organizations.js
+│   │   ├── permissions.js
+│   │   ├── project-members.js
+│   │   ├── projects.js
+│   │   ├── roles.js
+│   │   ├── todos.js
+│   │   └── users.js
 │   ├── routes/              # API route definitions
 │   │   ├── index.js          # Route aggregator
 │   │   ├── authentication.js
-│   │   ├── health.js          # Health check endpoint
-│   │   └── todos.js
+│   │   ├── health.js
+│   │   ├── invitations.js    # Org invitations
+│   │   ├── org-members.js
+│   │   ├── organizations.js
+│   │   ├── permissions.js
+│   │   ├── project-invitations.js
+│   │   ├── project-members.js
+│   │   ├── projects.js
+│   │   ├── roles.js
+│   │   ├── todos.js
+│   │   └── user-invitations.js # /api/invitations (my invitations)
 │   ├── utils/               # Utility functions
 │   │   ├── argon2.js         # Password hashing
 │   │   ├── constant.js       # HTTP constants
@@ -336,12 +458,12 @@ express-template/
 │   ├── app.js                # Express app configuration (middleware + routes)
 │   └── index.js              # Entry point (env validation + server start)
 ├── database/
-│   ├── migrations/          # Database migration files
-│   └── seeds/               # Database seed files
+│   ├── migrations/          # Database migration files (10 tables)
+│   └── seeds/               # Database seed files (9 seed files)
 ├── logs/                    # Application logs (created at runtime)
-│   ├── error-YYYY-MM-DD.log   # Error logs
+│   ├── error-YYYY-MM-DD.log    # Error logs
 │   └── combined-YYYY-MM-DD.log # All logs
-├── tests/                   # Test suite
+├── tests/                   # Test suite (64 tests across 8 files)
 │   ├── unit/                  # Unit tests (pure logic)
 │   ├── integration/           # Integration tests (HTTP endpoints)
 │   ├── helpers.js             # Test utilities

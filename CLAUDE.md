@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Express.js RESTful API template using PostgreSQL, Knex.js, and JWT authentication. ES Modules (`"type": "module"`), Node.js v24+ (pinned in `.nvmrc`).
+Multi-tenant Express.js RESTful API template with Organization → Project → Resource hierarchy, PostgreSQL, Knex.js, JWT authentication, and RBAC permissions. ES Modules (`"type": "module"`), Node.js v24+ (pinned in `.nvmrc`).
 
 ## Commands
 
@@ -34,6 +34,7 @@ No pre-commit hooks. Run `npm run lint:fix && npm run format:fix` before committ
 - **Models** (`src/models/`): Knex.js queries only — no business logic
 - **Controllers** (`src/controllers/`): Business logic, Joi validation, coordinates models
 - **Routes** (`src/routes/`): Route definitions + param validation middleware, aggregated in `routes/index.js`
+- **Middleware** (`src/middlewares/`): Authorization (JWT), tenant resolution (`resolveOrg`, `resolveProject`), permission guards (`requirePermission`)
 
 ### Middleware Order (critical — in `src/app.js`)
 
@@ -44,7 +45,19 @@ No pre-commit hooks. Run `npm run lint:fix && npm run format:fix` before committ
 5. Health check (`/health` — before rate limiting so load balancers aren't throttled)
 6. Rate limiting (generalLimiter — global, configurable via `RATE_LIMIT_GENERAL_MAX`)
 7. Logging (Morgan httpLogger + custom requestLogger)
-8. Routes (`/api`) — auth routes have additional `authLimiter`
+8. Routes (`/api`):
+   - `/api/auth/*` — auth routes (authLimiter)
+   - `requireAccessToken` — all routes below are authenticated
+   - `/api/invitations` — user's pending invitations
+   - `/api/permissions` — permission reference
+   - `/api/orgs` — org routes (resolveOrg applied at route level)
+     - `/:org_id/projects` — project routes (resolveProject at route level)
+       - `/:project_id/todos` — project-scoped todos
+       - `/:project_id/members` — project members
+       - `/:project_id/invitations` — project invitations
+     - `/:org_id/roles` — org roles
+     - `/:org_id/members` — org members
+     - `/:org_id/invitations` — org invitations
 9. 404 handler (notFoundHandler)
 10. Error handler (errorHandler) — **must be last**
 
@@ -64,17 +77,55 @@ No pre-commit hooks. Run `npm run lint:fix && npm run format:fix` before committ
 
 ### Request Context Flow
 
-Authorization middleware sets `req.user = { id }` from decoded JWT. Route-level param validation middleware (e.g., `requireTodoIdParam`) validates and stores `req.todoId`. Controllers access these directly — all data queries filter by `user_id` to prevent cross-user access.
+Authorization middleware sets `req.user = { id }` from decoded JWT. Tenant resolution middleware builds up context:
+
+- `resolveOrg` (on `/:org_id` routes): validates org_id UUID, loads org (404 if not found), verifies membership (403 if not member), loads permissions → sets `req.org = { id }` and `req.permissions = [...]`
+- `resolveProject` (on `/:project_id` routes): validates project_id UUID, loads project scoped to org (404 if not found), merges project-level permissions with org-level permissions → sets `req.project = { id }`
+- `requirePermission(name)`: higher-order middleware that checks `req.permissions.includes(name)`, returns 403 if missing
+
+**Permission Resolution**: Project permissions merge with org permissions (deduped). Org admins automatically have access to all projects without explicit project membership.
+
+**Request properties (lean context)**:
+
+```
+req.id          // Request ID (from requestId middleware)
+req.user        // { id } from JWT
+req.org         // { id } from resolveOrg
+req.project     // { id } from resolveProject
+req.permissions // ["todos:create", ...] merged org + project permissions
+```
 
 ### Authentication Flow
 
-- POST `/api/auth/signup` → creates user, returns `{ id, username }` (no tokens)
-- POST `/api/auth/signin` → returns `{ id, username, accessToken, refreshToken }`
+- POST `/api/auth/signup` → creates user, returns `{ id, username, email }` (no tokens). Email is optional.
+- POST `/api/auth/signin` → returns `{ id, username, access_token, refresh_token }`
 - POST `/api/auth/refresh` → returns new access token only
 
 Token headers: `x-access-token` and `x-refresh-token` (NOT `Authorization: Bearer`). JWT algorithm pinned to HS256 with explicit verification.
 
-Validation: username 3–30 chars, alphanumeric + `.` `_` `-` only. Password 8–72 chars (72 is Argon2's input limit). Auth routes are rate-limited via `authLimiter` (default 10 req/15min).
+Validation: username 3–30 chars, alphanumeric + `.` `_` `-` only. Password 8–72 chars (72 is Argon2's input limit). Email optional, max 255 chars, unique if provided. Auth routes are rate-limited via `authLimiter` (default 10 req/15min).
+
+### Multi-Tenancy Architecture
+
+**Hierarchy**: Organization → Project → Resources (Todos)
+
+**Data isolation**: Shared database with tenant columns (`org_id`, `project_id`). No schema-per-tenant.
+
+**Membership**: Users can belong to multiple orgs and multiple projects within each org (like GitHub).
+
+**RBAC**: Permission-per-Role table pattern. System roles (owner/admin/member/viewer) created per org. Org owners can create custom roles with granular permissions. 16 system permissions across org, project, todos, and invitations resources.
+
+**System Roles**:
+| Role | Permissions |
+| ------ | --------------------------------------- |
+| owner | All 16 permissions |
+| admin | All except org:delete, org:manage_roles |
+| member | org:read, project:read, todos CRUD |
+| viewer | org:read, project:read, todos:read |
+
+**Nested REST URLs**: `/api/orgs/:org_id/projects/:project_id/todos`
+
+**Invitation System**: Invite by username or email, 7-day expiry, accept/decline flow. Project invitations auto-add to org as viewer if not already a member.
 
 ### Error Handling
 
@@ -103,7 +154,7 @@ const params = validatePaginationQuery(req.query, ["updated_at", "title"])
 const { data: todos, pagination } = await executePaginatedQuery(
   model.count,
   model.findManyPaginated,
-  { user_id: userId },
+  { project_id: req.project.id },
   params,
   ["title"],
 )
@@ -114,7 +165,7 @@ return res.json(apiResponse({ data: todos, pagination }))
 
 ### Bulk Delete
 
-DELETE `/api/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string. Validated: max 50 IDs, each must be a valid UUID. Uses `removeMany(ids, conditions)` with `whereIn` for a single query instead of per-ID deletes.
+DELETE `/api/orgs/:org_id/projects/:project_id/todos?ids=id1,id2,id3` — comma-separated UUIDs in query string. Validated: max 50 IDs, each must be a valid UUID. Uses `removeMany(ids, conditions)` with `whereIn` for a single query instead of per-ID deletes.
 
 ## Code Style
 
@@ -135,18 +186,30 @@ Optional with defaults: `NODE_ENV` (development), `PORT` (3000), `ACCESS_TOKEN_E
 
 - **Config**: `knexfile.js` — connection pool min 2, max 10
 - **Migrations**: `database/migrations/` — format `YYYYMMDDHHMMSS_name.js`
-- **Seeds**: `database/seeds/` — 5 test users (password: "secretpassword"), 750 todos (150 per user)
+  - 10 migration files: users, organizations, permissions, roles, role_permissions, org_members, projects, project_members, invitations, todos
+- **Seeds**: `database/seeds/` — 9 seed files:
+  - 01: 16 system permissions
+  - 02: 5 test users (password: "secretpassword", with emails)
+  - 03: 2 organizations (Acme Corp, Globex Corporation)
+  - 04: 8 system roles (4 per org: owner/admin/member/viewer)
+  - 05: Role-permission mappings
+  - 06: 7 org memberships
+  - 07: 3 projects
+  - 08: 8 project memberships
+  - 09: ~250 project-scoped todos
 - Tables use `timestamps(true, true)` for timezone-aware created_at/updated_at
-- Todos foreign key to users with CASCADE delete
+- Organizations cascade delete to projects, todos, members, invitations
+- Projects cascade delete to todos, project_members
+- Roles are org-scoped with UNIQUE(org_id, name)
 
 ## Adding a New Resource
 
-1. Migration: `npm run migrate:make create_<resource>_table`
-2. Model: `src/models/<resource>.js` — CRUD + `count` and `findManyPaginated` with search support
-3. Controller: `src/controllers/<resource>.js` — Joi validation inline, pagination utility for list endpoints
-4. Routes: `src/routes/<resource>.js` — register in `src/routes/index.js`
-
-See `TEMPLATE_GUIDE.md` for detailed walkthrough.
+1. Migration: `npm run migrate:make create_<resource>_table` — include `org_id` or `project_id` foreign key for tenant scoping
+2. Model: `src/models/<resource>.js` — CRUD with tenant-scoped conditions
+3. Controller: `src/controllers/<resource>.js` — Use `req.org.id` / `req.project.id` for scoping, Joi validation inline
+4. Routes: `src/routes/<resource>.js` — Use `Router({ mergeParams: true })` for nested routes, apply `requirePermission()` guards
+5. Wire up in parent route file (e.g., `src/routes/projects.js` for project-scoped resources)
+6. Add permissions to `database/seeds/01_permissions.js` and update role mappings in `05_role_permissions.js`
 
 ## Testing
 
@@ -154,7 +217,14 @@ See `TEMPLATE_GUIDE.md` for detailed walkthrough.
 - **HTTP**: Supertest for integration tests against the Express app
 - **Database**: Real PostgreSQL test database (`express_template_test` on same cluster, configured in `.env.test`)
 - **Config**: `vitest.config.js` — `fileParallelism: false` (integration tests share DB state)
-- **Setup**: `tests/global-setup.js` — loads `.env.test`, validates env, runs migrations, truncates tables; returns teardown function that rolls back and destroys connection
-- **Helpers**: `tests/helpers.js` — `getApp()`, `request()`, `createTestUser()`, `getAuthHeaders()`, `cleanTable()`, `cleanAllTables()`
+- **Setup**: `tests/global-setup.js` — loads `.env.test`, validates env, runs migrations, truncates all tables, seeds permissions; returns teardown function
+- **Helpers**: `tests/helpers.js`:
+  - `getApp()`, `request()` — app bootstrapping
+  - `createTestUser()`, `getAuthHeaders()` — authentication
+  - `createTestOrg()` — creates org with system roles, adds creator as owner
+  - `createTestProject()` — creates project within org, adds creator as member
+  - `addOrgMember()`, `addProjectMember()` — membership setup
+  - `cleanAllTables()` — truncates all tables except permissions
+  - `seedPermissions()` — seeds 16 system permissions (called once in global setup)
 - **Structure**: `tests/unit/` for pure logic, `tests/integration/` for HTTP endpoints
-- **Convention**: Each integration test file calls `cleanAllTables()` in `afterEach` to ensure test isolation
+- **Convention**: Each integration test file calls `cleanAllTables()` in `beforeEach` or `afterEach`. Permissions persist across tests (seeded once in global setup).

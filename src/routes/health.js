@@ -4,28 +4,32 @@ import apiResponse from "../utils/response.js"
 
 const router = Router()
 
-router.get("/", async (req, res) => {
-  let dbStatus = "ok"
-  try {
-    await db.raw("SELECT 1")
-  } catch {
-    dbStatus = "error"
-  }
+router.get("/", (req, res, next) => {
+  db.raw("SELECT 1")
+    .then(() => "ok")
+    .catch(() => "error")
+    .then((dbStatus) => {
+      const healthy = dbStatus === "ok"
+      let statusCode = 503
+      let statusLabel = "unhealthy"
+      if (healthy) {
+        statusCode = 200
+        statusLabel = "healthy"
+      }
 
-  const healthy = dbStatus === "ok"
-  const status = healthy ? 200 : 503
-
-  return res.status(status).json(
-    apiResponse({
-      message: healthy ? "healthy" : "unhealthy",
-      data: {
-        status: healthy ? "healthy" : "unhealthy",
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        database: dbStatus,
-      },
-    }),
-  )
+      return res.status(statusCode).json(
+        apiResponse({
+          message: statusLabel,
+          data: {
+            status: statusLabel,
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            database: dbStatus,
+          },
+        }),
+      )
+    })
+    .catch(next)
 })
 
 export default router

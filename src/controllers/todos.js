@@ -6,10 +6,19 @@ import * as todoModel from "../models/todos.js"
 import crypto from "node:crypto"
 import { validatePaginationQuery, executePaginatedQuery } from "../utils/pagination.js"
 
-const todoIdParamSchema = joi.object({
-  todo_id: joi.string().uuid().required(),
-})
+/**
+ * Joi schema for validating the :todo_id route parameter.
+ */
+const todoIdParamSchema = joi
+  .object({
+    todo_id: joi.string().uuid().required(),
+  })
+  .options({ allowUnknown: true })
 
+/**
+ * Joi schema for validating todo create/update request bodies.
+ * Strips unknown fields to prevent mass assignment.
+ */
 const todoBodySchema = joi
   .object({
     title: joi.string().max(255).required(),
@@ -18,6 +27,10 @@ const todoBodySchema = joi
   })
   .options({ stripUnknown: true })
 
+/**
+ * Joi schema for validating the bulk delete query string.
+ * Accepts up to 50 comma-separated UUIDs.
+ */
 const deleteTodosQuerySchema = joi
   .object({
     ids: joi
@@ -41,14 +54,12 @@ const deleteTodosQuerySchema = joi
   .options({ stripUnknown: true })
 
 /**
- * Express middleware to require a todo_id parameter in the request.
- *
- * Validates the todo_id parameter in the request URL.
+ * Express middleware to validate the :todo_id route parameter.
+ * Stores the validated UUID on req.todoId for downstream handlers.
  *
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
- * @returns {Object} JSON response with error status and message
  */
 export const requireTodoIdParam = (req, res, next) => {
   const { error, value } = todoIdParamSchema.validate(req.params)
@@ -56,26 +67,31 @@ export const requireTodoIdParam = (req, res, next) => {
     throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
   }
 
-  // request value
+  // Store validated todo ID on the request
   const { todo_id } = value
-
-  // assign request value
   req.todoId = todo_id
 
   next()
 }
 
+/**
+ * GET /api/orgs/:org_id/projects/:project_id/todos — List todos with pagination.
+ * Scoped to the project via req.project.id (set by resolveProject middleware).
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 export const getTodos = async (req, res, next) => {
   try {
-    // request values
-    const userId = req.user.id
+    // Validate pagination/search/sort query parameters
     const params = validatePaginationQuery(req.query, ["updated_at", "title"])
 
-    // get total count and todos simultaneously
+    // Fetch count + todos in parallel, scoped to the project
     const { data: todos, pagination } = await executePaginatedQuery(
       todoModel.count,
       todoModel.findManyPaginated,
-      { user_id: userId },
+      { project_id: req.project.id },
       params,
       ["title"],
     )
@@ -92,16 +108,22 @@ export const getTodos = async (req, res, next) => {
   }
 }
 
+/**
+ * GET /api/orgs/:org_id/projects/:project_id/todos/:todo_id — Get a single todo.
+ * Scoped to the project via req.project.id.
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 export const getTodo = async (req, res, next) => {
   try {
-    // request values
-    const userId = req.user.id
     const todoId = req.todoId
 
-    // get todo
-    const todo = await todoModel.findOne({ id: todoId, user_id: userId })
+    // Find the todo scoped to the current project
+    const todo = await todoModel.findOne({ id: todoId, project_id: req.project.id })
     if (!todo) {
-      throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "todo not found")
+      throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "Todo not found")
     }
 
     return res.json(
@@ -115,22 +137,28 @@ export const getTodo = async (req, res, next) => {
   }
 }
 
+/**
+ * POST /api/orgs/:org_id/projects/:project_id/todos — Create a new todo.
+ * Scoped to the project via req.project.id. The authenticated user is recorded as the creator.
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 export const createTodo = async (req, res, next) => {
   try {
-    // request values
     const { error, value } = todoBodySchema.validate(req.body)
     if (error) {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
-    // request values
-    const userId = req.user.id
     const { title, description, is_completed } = value
 
-    // create todo
+    // Build the todo record — project_id for scoping, user_id as creator
     const todoData = {
       id: crypto.randomUUID(),
-      user_id: userId,
+      project_id: req.project.id,
+      user_id: req.user.id,
       title,
       created_at: new Date(),
       updated_at: new Date(),
@@ -151,27 +179,32 @@ export const createTodo = async (req, res, next) => {
   }
 }
 
+/**
+ * PUT /api/orgs/:org_id/projects/:project_id/todos/:todo_id — Update a todo.
+ * Scoped to the project via req.project.id.
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 export const updateTodo = async (req, res, next) => {
   try {
-    // request values
     const { error, value } = todoBodySchema.validate(req.body)
     if (error) {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
-    // request values
-    const userId = req.user.id
     const todoId = req.todoId
     const { title, description, is_completed } = value
 
-    // update todo
+    // Build update data — only include optional fields if provided
     const updateData = { title, updated_at: new Date() }
     if (description !== undefined) updateData.description = description
     if (is_completed !== undefined) updateData.is_completed = is_completed
 
-    const [todo] = await todoModel.update({ id: todoId, user_id: userId }, updateData)
+    const [todo] = await todoModel.update({ id: todoId, project_id: req.project.id }, updateData)
     if (!todo) {
-      throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "todo not found")
+      throw new HttpError(HTTP_STATUS_CODE.NOT_FOUND, "Todo not found")
     }
 
     return res.json(
@@ -185,14 +218,20 @@ export const updateTodo = async (req, res, next) => {
   }
 }
 
+/**
+ * DELETE /api/orgs/:org_id/projects/:project_id/todos/:todo_id — Delete a single todo.
+ * Scoped to the project via req.project.id.
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 export const deleteTodo = async (req, res, next) => {
   try {
-    // request values
-    const userId = req.user.id
     const todoId = req.todoId
 
-    // delete todo
-    await todoModel.remove({ id: todoId, user_id: userId })
+    // Delete the todo scoped to the current project
+    await todoModel.remove({ id: todoId, project_id: req.project.id })
 
     return res.json(
       apiResponse({
@@ -205,6 +244,15 @@ export const deleteTodo = async (req, res, next) => {
   }
 }
 
+/**
+ * DELETE /api/orgs/:org_id/projects/:project_id/todos?ids=id1,id2,... — Bulk delete todos.
+ * Accepts up to 50 comma-separated UUIDs in the query string.
+ * Scoped to the project via req.project.id.
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 export const deleteTodos = async (req, res, next) => {
   try {
     const { error, value } = deleteTodosQuerySchema.validate(req.query)
@@ -212,12 +260,10 @@ export const deleteTodos = async (req, res, next) => {
       throw new HttpError(HTTP_STATUS_CODE.BAD_REQUEST, error.details[0].message)
     }
 
-    // request values
-    const userId = req.user.id
     const todoIds = value.ids
 
-    // delete todos
-    await todoModel.removeMany(todoIds, { user_id: userId })
+    // Bulk delete scoped to the current project
+    await todoModel.removeMany(todoIds, { project_id: req.project.id })
 
     return res.json(
       apiResponse({
