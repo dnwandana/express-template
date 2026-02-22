@@ -13,6 +13,10 @@
   ],
   "tags": [
     {
+      "name": "Health",
+      "description": "Service health monitoring"
+    },
+    {
       "name": "Authentication",
       "description": "User authentication and token management"
     },
@@ -27,6 +31,75 @@
     }
   ],
   "paths": {
+    "/health": {
+      "servers": [
+        {
+          "url": "http://localhost:3000",
+          "description": "Development server (root)"
+        }
+      ],
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Returns service health status including database connectivity. Mounted before rate limiting so load balancers are not throttled.",
+        "security": [],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "message": "healthy",
+                  "data": {
+                    "status": "healthy",
+                    "timestamp": "2026-02-22T12:00:00.000Z",
+                    "uptime": 3600.5,
+                    "database": "ok"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service is unhealthy",
+            "headers": {
+              "X-Request-Id": {
+                "$ref": "#/components/headers/X-Request-Id"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                },
+                "example": {
+                  "message": "unhealthy",
+                  "data": {
+                    "status": "unhealthy",
+                    "timestamp": "2026-02-22T12:00:00.000Z",
+                    "uptime": 3600.5,
+                    "database": "error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/signup": {
       "post": {
         "tags": ["Authentication"],
@@ -379,6 +452,38 @@
           "previous_page"
         ]
       },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "enum": ["healthy", "unhealthy"]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["healthy", "unhealthy"]
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "uptime": {
+                "type": "number",
+                "description": "Server uptime in seconds"
+              },
+              "database": {
+                "type": "string",
+                "enum": ["ok", "error"]
+              }
+            },
+            "required": ["status", "timestamp", "uptime", "database"]
+          }
+        },
+        "required": ["message", "data"]
+      },
       "StandardResponse": {
         "type": "object",
         "properties": {
@@ -522,7 +627,26 @@
         "required": ["id", "username"]
       }
     },
+    "headers": {
+      "X-Request-Id": {
+        "description": "Correlation ID for request tracing. Echoes the request header if provided, otherwise a generated UUID.",
+        "schema": {
+          "type": "string",
+          "example": "550e8400-e29b-41d4-a716-446655440000"
+        }
+      }
+    },
     "parameters": {
+      "RequestId": {
+        "name": "X-Request-Id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "description": "Optional correlation ID. If provided (up to 128 chars), it is echoed back in the response. Otherwise a UUID is generated."
+      },
       "TodoIdParam": {
         "name": "todo_id",
         "in": "path",
@@ -820,8 +944,19 @@
             "schema": {
               "$ref": "#/components/schemas/Error"
             },
-            "example": {
-              "message": "Not Found"
+            "examples": {
+              "todo": {
+                "summary": "Todo not found",
+                "value": {
+                  "message": "todo not found"
+                }
+              },
+              "route": {
+                "summary": "Route not found",
+                "value": {
+                  "message": "Not Found"
+                }
+              }
             }
           }
         }
