@@ -21,7 +21,7 @@ export const requireAccessToken = (req, res, next) => {
       logger.warn("Authentication failed: No token provided", {
         method: req.method,
         url: req.url,
-        ip: req.ip || req.connection.remoteAddress,
+        ip: req.ip,
       })
       throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "No token provided")
     }
@@ -49,7 +49,7 @@ export const requireAccessToken = (req, res, next) => {
       logger.warn("Authentication failed: Invalid token", {
         method: req.method,
         url: req.url,
-        ip: req.ip || req.connection.remoteAddress,
+        ip: req.ip,
       })
       return next(new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid token"))
     }
@@ -57,7 +57,7 @@ export const requireAccessToken = (req, res, next) => {
       logger.warn("Authentication failed: Token expired", {
         method: req.method,
         url: req.url,
-        ip: req.ip || req.connection.remoteAddress,
+        ip: req.ip,
       })
       return next(new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Token expired"))
     }
@@ -66,7 +66,7 @@ export const requireAccessToken = (req, res, next) => {
       stack: error.stack,
       method: req.method,
       url: req.url,
-      ip: req.ip || req.connection.remoteAddress,
+      ip: req.ip,
     })
     return next(error)
   }
@@ -90,7 +90,7 @@ export const requireRefreshToken = (req, res, next) => {
       logger.warn("Refresh token authentication failed: No token provided", {
         method: req.method,
         url: req.url,
-        ip: req.ip || req.connection.remoteAddress,
+        ip: req.ip,
       })
       throw new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "No token provided")
     }
@@ -118,7 +118,7 @@ export const requireRefreshToken = (req, res, next) => {
       logger.warn("Refresh token authentication failed: Invalid token", {
         method: req.method,
         url: req.url,
-        ip: req.ip || req.connection.remoteAddress,
+        ip: req.ip,
       })
       return next(new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Invalid token"))
     }
@@ -126,7 +126,7 @@ export const requireRefreshToken = (req, res, next) => {
       logger.warn("Refresh token authentication failed: Token expired", {
         method: req.method,
         url: req.url,
-        ip: req.ip || req.connection.remoteAddress,
+        ip: req.ip,
       })
       return next(new HttpError(HTTP_STATUS_CODE.UNAUTHORIZED, "Token expired"))
     }
@@ -135,7 +135,7 @@ export const requireRefreshToken = (req, res, next) => {
       stack: error.stack,
       method: req.method,
       url: req.url,
-      ip: req.ip || req.connection.remoteAddress,
+      ip: req.ip,
     })
     return next(error)
   }
