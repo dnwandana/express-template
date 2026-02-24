@@ -189,18 +189,16 @@ GET /api/orgs/:org_id/projects/:project_id/todos?page=1&limit=20&sort_by=title&s
 ```json
 {
   "message": "OK",
-  "data": {
-    "todos": [...],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 5,
-      "total_items": 100,
-      "items_per_page": 20,
-      "has_next_page": true,
-      "has_previous_page": false,
-      "next_page": 2,
-      "previous_page": null
-    }
+  "data": [...],
+  "pagination": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_items": 100,
+    "items_per_page": 20,
+    "has_next_page": true,
+    "has_previous_page": false,
+    "next_page": 2,
+    "previous_page": null
   }
 }
 ```
