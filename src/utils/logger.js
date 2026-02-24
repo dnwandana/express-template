@@ -2,8 +2,6 @@ import winston from "winston"
 import DailyRotateFile from "winston-daily-rotate-file"
 import path from "path"
 
-const logDir = path.join(process.cwd(), "logs")
-
 // Define log formats
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
@@ -25,17 +23,6 @@ const consoleFormat = winston.format.combine(
   }),
 )
 
-// Create daily rotate file transports
-const createRotateTransport = (filename, level) => {
-  return new DailyRotateFile({
-    filename: path.join(logDir, filename),
-    datePattern: "YYYY-MM-DD",
-    maxSize: "20m",
-    maxFiles: "14d",
-    level,
-  })
-}
-
 // Use structured JSON in production, colorized output in development
 let consoleTransportFormat = consoleFormat
 if (process.env.NODE_ENV === "production") {
@@ -44,17 +31,28 @@ if (process.env.NODE_ENV === "production") {
 
 // Define transports
 const transports = [
-  // Console transport for development
   new winston.transports.Console({
     format: consoleTransportFormat,
   }),
-
-  // Error log file
-  createRotateTransport("error-%DATE%.log", "error"),
-
-  // Combined log file (all levels)
-  createRotateTransport("combined-%DATE%.log", "info"),
 ]
+
+// Add file transports when LOG_TO_FILE is enabled
+if (process.env.LOG_TO_FILE === "true") {
+  const logDir = path.join(process.cwd(), "logs")
+
+  const createRotateTransport = (filename, level) => {
+    return new DailyRotateFile({
+      filename: path.join(logDir, filename),
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
+      level,
+    })
+  }
+
+  transports.push(createRotateTransport("error-%DATE%.log", "error"))
+  transports.push(createRotateTransport("combined-%DATE%.log", "info"))
+}
 
 // Create logger instance
 const logger = winston.createLogger({

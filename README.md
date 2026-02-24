@@ -105,6 +105,7 @@ Create a `.env` file in the project root with the following variables:
 | `JWT_ISSUER`               | JWT issuer claim (iss)               | -                       | Yes      |
 | `JWT_AUDIENCE`             | JWT audience claim (aud)             | -                       | Yes      |
 | `LOG_LEVEL`                | Logging level                        | `info`                  | No       |
+| `LOG_TO_FILE`              | Enable file logging                  | `true`                  | No       |
 | `CORS_ALLOWED_ORIGINS`     | Comma-separated allowed origins      | `http://localhost:8080` | No       |
 | `RATE_LIMIT_AUTH_MAX`      | Auth endpoint rate limit (per 15min) | `10`                    | No       |
 | `RATE_LIMIT_GENERAL_MAX`   | Global rate limit (per 15min)        | `100`                   | No       |
@@ -129,16 +130,18 @@ This template includes a comprehensive logging system powered by Winston and Mor
 
 - **Structured Logging**: JSON-formatted logs for easy parsing and analysis
 - **Daily Rotation**: Automatic log file rotation (keeps 14 days of logs)
-- **Multiple Transports**: Console (development) and file (all environments)
+- **Multiple Transports**: Console (always) and file (when `LOG_TO_FILE=true`)
 - **HTTP Request Logging**: Morgan middleware for HTTP request/response logging
 - **Log Levels**: error, warn, info, http, debug
 
 ### Log Files
 
-Logs are stored in the `logs/` directory:
+When `LOG_TO_FILE=true`, logs are stored in the `logs/` directory:
 
 - `error-YYYY-MM-DD.log` - Error-level logs only
 - `combined-YYYY-MM-DD.log` - All logs (info level and above)
+
+File logging is enabled by default. Set `LOG_TO_FILE=false` for containerized and serverless environments where logs should go to stdout/stderr.
 
 ### Log Levels
 
