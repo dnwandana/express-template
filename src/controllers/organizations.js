@@ -47,6 +47,15 @@ const createSystemRoles = async (trx, orgId, allPermissions) => {
 
   // Define which permissions each system role receives
   const allPermIds = Object.values(permissionMap)
+
+  // Guard against missing permission lookups — would produce null inserts
+  if (allPermIds.some((id) => id === undefined)) {
+    throw new HttpError(
+      HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+      "Server configuration error: one or more system permissions are missing from the database.",
+    )
+  }
+
   const adminPermIds = allPermIds.filter(
     (id) => id !== permissionMap["org:delete"] && id !== permissionMap["org:manage_roles"],
   )
@@ -125,6 +134,14 @@ export const createOrg = async (req, res, next) => {
 
     // Fetch all permissions upfront — needed to build role-permission mappings
     const allPermissions = await db.select("id", "name").from("permissions")
+
+    // Validate all required system permissions exist before starting the transaction
+    if (allPermissions.length === 0) {
+      throw new HttpError(
+        HTTP_STATUS_CODE.INTERNAL_SERVER_ERROR,
+        "Server configuration error: system permissions have not been seeded. Run `npm run seed` first.",
+      )
+    }
 
     // Transaction: create org + system roles + add creator as owner
     const [org] = await db.transaction(async (trx) => {
